@@ -5,6 +5,13 @@ import { supabase } from "../../lib/supabaseClient";
 import GestionSaisons from "./pages/GestionSaisons";
 import GestionGymnases from "./pages/GestionGymnases";
 import GestionCours from "./pages/GestionCours";
+import GestionEntraineurs from "./pages/GestionEntraineurs";
+import GestionAffectationsEntraineurs from "./pages/GestionAffectationsEntraineurs";
+import GestionInscriptions from "./pages/GestionInscriptions";
+
+import GestionFinance from "./finance/GestionFinance";
+import GestionContrats from "./contrats/GestionContrats";
+import GestionAdministrateurs from "./administrateurs/GestionAdministrateurs";
 
 import "./AdministrationApp.css";
 
@@ -52,11 +59,25 @@ const SECTIONS_ADMINISTRATION = [
       "Consulter et gérer les inscriptions.",
   },
   {
-    id: "paiements",
-    icone: "💳",
-    titre: "Paiements",
+    id: "finance",
+    icone: "💰",
+    titre: "Finance",
     description:
-      "Suivre les paiements Interac et les remboursements.",
+      "Consulter les revenus, paiements et remboursements.",
+  },
+  {
+    id: "contrats",
+    icone: "📄",
+    titre: "Contrats",
+    description:
+      "Gérer les contrats, politiques et leurs versions.",
+  },
+  {
+  id: "administrateurs",
+  icone: "🔐",
+  titre: "Administrateurs",
+  description:
+    "Inviter, consulter et révoquer les accès administrateurs.",
   },
 ];
 
@@ -102,6 +123,35 @@ function AdministrationApp({ profil }) {
       return <GestionCours />;
     }
 
+    if (sectionActive === "entraineurs") {
+      return <GestionEntraineurs />;
+    }
+
+    if (
+      sectionActive ===
+      "affectations-entraineurs"
+    ) {
+      return (
+        <GestionAffectationsEntraineurs />
+      );
+    }
+
+    if (sectionActive === "inscriptions") {
+      return <GestionInscriptions />;
+    }
+
+    if (sectionActive === "finance") {
+      return <GestionFinance />;
+    }
+
+    if (sectionActive === "contrats") {
+      return <GestionContrats />;
+    }
+
+    if (sectionActive === "administrateurs") {
+      return <GestionAdministrateurs />;
+    }
+
     const section =
       SECTIONS_ADMINISTRATION.find(
         (element) =>
@@ -117,10 +167,7 @@ function AdministrationApp({ profil }) {
 
           <div>
             <h1>{section?.titre}</h1>
-
-            <p>
-              {section?.description}
-            </p>
+            <p>{section?.description}</p>
           </div>
         </div>
 
@@ -228,9 +275,7 @@ function AdministrationApp({ profil }) {
                   </div>
 
                   <div className="admin-carte-contenu">
-                    <h3>
-                      {section.titre}
-                    </h3>
+                    <h3>{section.titre}</h3>
 
                     <p>
                       {section.description}

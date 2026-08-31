@@ -1,0 +1,147 @@
+.modale-inscription-fond {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 32px 16px;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.modale-inscription {
+  width: min(860px, 100%);
+  padding: 24px;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.modale-inscription-entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.modale-inscription-entete h2,
+.modale-inscription-entete p {
+  margin-top: 0;
+}
+
+.formulaire-inscription {
+  display: grid;
+  gap: 18px;
+}
+
+.formulaire-inscription > label {
+  display: grid;
+  gap: 8px;
+  font-weight: 600;
+}
+
+.formulaire-inscription input[type="text"],
+.formulaire-inscription select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #c9c9c9;
+  border-radius: 8px;
+  background: #fff;
+  font: inherit;
+}
+
+.inscription-politiques {
+  display: grid;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.inscription-politiques > h2 {
+  margin-bottom: 0;
+}
+
+.inscription-politique {
+  padding: 16px;
+  border: 1px solid #d9d9d9;
+  border-radius: 12px;
+}
+
+.inscription-politique-entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.inscription-politique-entete h3 {
+  margin: 0;
+}
+
+.inscription-politique-entete span {
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.inscription-politique-contenu {
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.inscription-reponses {
+  display: flex;
+  gap: 24px;
+  margin-top: 14px;
+}
+
+.inscription-reponses label,
+.inscription-acceptation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.inscription-acceptation {
+  margin-top: 14px;
+  font-weight: 600;
+}
+
+.inscription-message {
+  padding: 12px 14px;
+  border-radius: 8px;
+}
+
+.inscription-message-erreur {
+  background: #fbe9e9;
+}
+
+.inscription-message-succes {
+  background: #eaf7ea;
+}
+
+.modale-inscription-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .modale-inscription {
+    padding: 18px;
+  }
+
+  .modale-inscription-entete,
+  .inscription-politique-entete {
+    flex-direction: column;
+  }
+
+  .modale-inscription-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modale-inscription-actions .bouton {
+    width: 100%;
+  }
+}
