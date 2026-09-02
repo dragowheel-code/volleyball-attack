@@ -1,0 +1,80 @@
+.acceptation-admin-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f5f5f5;
+}
+
+.acceptation-admin-carte {
+  width: 100%;
+  max-width: 460px;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 32px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+.acceptation-admin-carte h1 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.acceptation-admin-description {
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.acceptation-admin-formulaire {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.acceptation-admin-formulaire label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.acceptation-admin-formulaire input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #cccccc;
+  border-radius: 7px;
+  font-size: 1rem;
+}
+
+.acceptation-admin-bouton {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 18px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.acceptation-admin-bouton:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.acceptation-admin-erreur {
+  margin-bottom: 18px;
+  padding: 12px;
+  border-radius: 7px;
+  background: #ffe8e8;
+}
+
+.acceptation-admin-succes {
+  padding: 16px;
+  border-radius: 7px;
+  background: #e9f8ec;
+}
+
+.acceptation-admin-succes p {
+  margin-bottom: 18px;
+}
