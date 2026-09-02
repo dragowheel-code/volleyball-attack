@@ -4,6 +4,7 @@ import { supabase } from "./lib/supabaseClient";
 
 import Accueil from "./pages/Accueil";
 import EspaceParent from "./pages/EspaceParent";
+import EspaceEntraineur from "./pages/EspaceEntraineur";
 
 import AdministrationApp from "./modules/administration/AdministrationApp";
 
@@ -186,29 +187,14 @@ function App() {
   }
 
   // =========================================================
-  // ENTRAÎNEUR
-  // =========================================================
+// ENTRAÎNEUR
+// =========================================================
 
-  if (profil.role === "entraineur") {
-    return (
-      <main className="page-chargement">
-        <p>
-          L'espace entraîneur n'est pas
-          encore disponible.
-        </p>
-
-        <button
-          type="button"
-          className="bouton bouton-secondaire"
-          onClick={async () => {
-            await supabase.auth.signOut();
-          }}
-        >
-          Déconnexion
-        </button>
-      </main>
-    );
-  }
+if (profil.role === "entraineur") {
+  return (
+    <EspaceEntraineur profil={profil} />
+  );
+}
 
   // =========================================================
   // RÔLE INCONNU

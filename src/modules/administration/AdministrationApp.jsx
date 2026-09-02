@@ -8,7 +8,7 @@ import GestionCours from "./pages/GestionCours";
 import GestionEntraineurs from "./pages/GestionEntraineurs";
 import GestionAffectationsEntraineurs from "./pages/GestionAffectationsEntraineurs";
 import GestionInscriptions from "./pages/GestionInscriptions";
-
+import GestionPresences from "./pages/GestionPresences";
 import GestionFinance from "./finance/GestionFinance";
 import GestionContrats from "./contrats/GestionContrats";
 import GestionAdministrateurs from "./administrateurs/GestionAdministrateurs";
@@ -79,6 +79,13 @@ const SECTIONS_ADMINISTRATION = [
   description:
     "Inviter, consulter et révoquer les accès administrateurs.",
   },
+  {
+  id: "presences",
+  icone: "✅",
+  titre: "Présences",
+  description:
+    "Consulter le cumulatif des présences, absences et retards des joueuses.",
+},
 ];
 
 function AdministrationApp({ profil }) {
@@ -121,6 +128,10 @@ function AdministrationApp({ profil }) {
 
     if (sectionActive === "cours") {
       return <GestionCours />;
+    }
+
+    if (sectionActive === "presences") {
+      return <GestionPresences />;
     }
 
     if (sectionActive === "entraineurs") {

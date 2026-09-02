@@ -1,0 +1,155 @@
+.gestion-presences {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.gestion-presences-entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gestion-presences-entete h1 {
+  margin: 0 0 6px;
+}
+
+.gestion-presences-entete p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.gestion-presences-outils {
+  display: flex;
+  gap: 12px;
+}
+
+.gestion-presences-outils input {
+  width: min(420px, 100%);
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.gestion-presences-tableau-conteneur {
+  overflow-x: auto;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+.gestion-presences-tableau {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.gestion-presences-tableau th,
+.gestion-presences-tableau td {
+  padding: 14px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+  white-space: nowrap;
+}
+
+.gestion-presences-tableau th {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #6b7280;
+  background: #f9fafb;
+}
+
+.gestion-presences-tableau tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.gestion-presences-message,
+.gestion-presences-erreur {
+  padding: 16px;
+  border-radius: 12px;
+}
+
+.gestion-presences-message {
+  background: #f9fafb;
+  color: #4b5563;
+}
+
+.gestion-presences-erreur {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 700px) {
+  .gestion-presences-entete {
+    flex-direction: column;
+  }
+
+  .gestion-presences-outils input {
+    width: 100%;
+  }
+}
+.gestion-presences-joueuse {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.gestion-presences-joueuse:hover {
+  text-decoration: underline;
+}
+
+.gestion-presences-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 8px;
+  padding: 20px;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+.gestion-presences-detail-entete {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.gestion-presences-detail-entete h2 {
+  margin: 0 0 4px;
+}
+
+.gestion-presences-detail-entete p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.gestion-presences-detail-fermer {
+  padding: 8px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.gestion-presences-statut {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: #f3f4f6;
+}
+
+@media (max-width: 700px) {
+  .gestion-presences-detail-entete {
+    flex-direction: column;
+  }
+}
