@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+
 import { supabase } from "../../lib/supabaseClient";
+
 import "./AccepterInvitationAdministrateur.css";
 
 export default function AccepterInvitationAdministrateur() {
   const [chargement, setChargement] = useState(true);
   const [sessionValide, setSessionValide] = useState(false);
+  const [role, setRole] = useState(null);
 
   const [motDePasse, setMotDePasse] = useState("");
   const [confirmation, setConfirmation] = useState("");
@@ -12,6 +15,31 @@ export default function AccepterInvitationAdministrateur() {
   const [enregistrement, setEnregistrement] = useState(false);
   const [erreur, setErreur] = useState("");
   const [succes, setSucces] = useState("");
+
+  async function chargerRole(userId) {
+    if (!userId) {
+      setRole(null);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("profils")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Impossible de charger le rôle :",
+        error
+      );
+
+      setRole(null);
+      return;
+    }
+
+    setRole(data?.role ?? null);
+  }
 
   useEffect(() => {
     let actif = true;
@@ -25,22 +53,48 @@ export default function AccepterInvitationAdministrateur() {
         return;
       }
 
-      setSessionValide(Boolean(session));
-      setChargement(false);
+      if (session?.user) {
+        setSessionValide(true);
+
+        await chargerRole(
+          session.user.id
+        );
+      } else {
+        setSessionValide(false);
+        setRole(null);
+      }
+
+      if (actif) {
+        setChargement(false);
+      }
     };
 
     verifierSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!actif) {
-        return;
-      }
+    } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (!actif) {
+          return;
+        }
 
-      setSessionValide(Boolean(session));
-      setChargement(false);
-    });
+        if (session?.user) {
+          setSessionValide(true);
+
+          await chargerRole(
+            session.user.id
+          );
+        } else {
+          setSessionValide(false);
+          setRole(null);
+        }
+
+        if (actif) {
+          setChargement(false);
+        }
+      }
+    );
 
     return () => {
       actif = false;
@@ -58,6 +112,7 @@ export default function AccepterInvitationAdministrateur() {
       setErreur(
         "Le mot de passe doit contenir au moins 8 caractères."
       );
+
       return;
     }
 
@@ -65,14 +120,16 @@ export default function AccepterInvitationAdministrateur() {
       setErreur(
         "Les deux mots de passe ne correspondent pas."
       );
+
       return;
     }
 
     setEnregistrement(true);
 
-    const { error } = await supabase.auth.updateUser({
-      password: motDePasse,
-    });
+    const { error } =
+      await supabase.auth.updateUser({
+        password: motDePasse,
+      });
 
     setEnregistrement(false);
 
@@ -84,16 +141,37 @@ export default function AccepterInvitationAdministrateur() {
     setMotDePasse("");
     setConfirmation("");
 
-    setSucces(
-      "Votre accès administrateur est maintenant activé."
-    );
+    if (role === "entraineur") {
+      setSucces(
+        "Votre accès entraîneur est maintenant activé."
+      );
+    } else if (
+      role === "administrateur"
+    ) {
+      setSucces(
+        "Votre accès administrateur est maintenant activé."
+      );
+    } else {
+      setSucces(
+        "Votre accès est maintenant activé."
+      );
+    }
   };
+
+  const libelleRole =
+    role === "entraineur"
+      ? "entraîneur"
+      : role === "administrateur"
+        ? "administrateur"
+        : "";
 
   if (chargement) {
     return (
       <div className="acceptation-admin-page">
         <div className="acceptation-admin-carte">
-          <p>Validation de l'invitation...</p>
+          <p>
+            Validation de l'invitation...
+          </p>
         </div>
       </div>
     );
@@ -103,7 +181,9 @@ export default function AccepterInvitationAdministrateur() {
     return (
       <div className="acceptation-admin-page">
         <div className="acceptation-admin-carte">
-          <h1>Invitation administrateur</h1>
+          <h1>
+            Invitation
+          </h1>
 
           <div className="acceptation-admin-erreur">
             Cette invitation est invalide ou expirée.
@@ -120,7 +200,10 @@ export default function AccepterInvitationAdministrateur() {
 
         <p className="acceptation-admin-description">
           Choisissez votre mot de passe pour terminer
-          l'activation de votre accès administrateur.
+          l'activation de votre accès
+          {libelleRole
+            ? ` ${libelleRole}`
+            : ""}.
         </p>
 
         {erreur && (
@@ -131,7 +214,9 @@ export default function AccepterInvitationAdministrateur() {
 
         {succes ? (
           <div className="acceptation-admin-succes">
-            <strong>{succes}</strong>
+            <strong>
+              {succes}
+            </strong>
 
             <p>
               Vous pouvez maintenant accéder à
@@ -160,7 +245,9 @@ export default function AccepterInvitationAdministrateur() {
                 type="password"
                 value={motDePasse}
                 onChange={(event) =>
-                  setMotDePasse(event.target.value)
+                  setMotDePasse(
+                    event.target.value
+                  )
                 }
                 autoComplete="new-password"
                 required
@@ -174,7 +261,9 @@ export default function AccepterInvitationAdministrateur() {
                 type="password"
                 value={confirmation}
                 onChange={(event) =>
-                  setConfirmation(event.target.value)
+                  setConfirmation(
+                    event.target.value
+                  )
                 }
                 autoComplete="new-password"
                 required
