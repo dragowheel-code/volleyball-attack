@@ -18,7 +18,9 @@ function ReinitialiserMotDePasse() {
 
       if (error) {
         console.error("Erreur getSession :", error);
-        setMessage(`Erreur Supabase : ${error.message}`);
+        setMessage(
+          "Impossible de valider le lien de réinitialisation. Veuillez demander un nouveau lien."
+        );
         return;
       }
 
@@ -73,7 +75,23 @@ function ReinitialiserMotDePasse() {
 
     if (error) {
       console.error("Erreur updateUser :", error);
-      setMessage(`Erreur Supabase : ${error.message}`);
+
+      const messageErreur = error.message?.toLowerCase() || "";
+
+      if (
+        messageErreur.includes("same password") ||
+        messageErreur.includes("different from the old password") ||
+        messageErreur.includes("new password should be different")
+      ) {
+        setMessage(
+          "Votre nouveau mot de passe doit être différent de votre mot de passe actuel."
+        );
+      } else {
+        setMessage(
+          "Impossible de modifier le mot de passe. Veuillez demander un nouveau lien de récupération et réessayer."
+        );
+      }
+
       return;
     }
 
