@@ -81,8 +81,10 @@ function Accueil() {
       alert("Ce compte ne possède pas d'accès parent.");
     }
   }
-  function ouvrirMotPasseOublie() {
-    setCourrielRecuperation(courriel.trim().toLowerCase());
+  function ouvrirMotPasseOublie(courrielInitial = "") {
+    setAfficherConnexionEntraineur(false);
+    setAfficherConnexionAdministration(false);
+    setCourrielRecuperation(courrielInitial.trim().toLowerCase());
     setMessageRecuperation("");
     setAfficherMotPasseOublie(true);
   }
@@ -491,7 +493,7 @@ function Accueil() {
             <button
               type="button"
               className="bouton bouton-secondaire"
-              onClick={ouvrirMotPasseOublie}
+              onClick={() => ouvrirMotPasseOublie(courriel)}
             >
               Mot de passe oublié?
             </button>
@@ -769,6 +771,14 @@ function Accueil() {
                   required
                 />
               </div>
+              <button
+                type="button"
+                className="bouton bouton-secondaire"
+                onClick={() => ouvrirMotPasseOublie(courrielEntraineur)}
+                disabled={connexionEntraineurEnCours}
+              >
+                Mot de passe oublié?
+              </button>
               {messageEntraineur && (
                 <p className="message-creation">{messageEntraineur}</p>
               )}
@@ -848,6 +858,14 @@ function Accueil() {
                   required
                 />
               </div>
+              <button
+                type="button"
+                className="bouton bouton-secondaire"
+                onClick={() => ouvrirMotPasseOublie(courrielAdministration)}
+                disabled={connexionAdministrationEnCours}
+              >
+                Mot de passe oublié?
+              </button>
               {messageAdministration && (
                 <p className="message-creation">
                   {messageAdministration}
