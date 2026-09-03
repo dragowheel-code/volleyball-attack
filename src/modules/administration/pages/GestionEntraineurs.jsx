@@ -49,11 +49,13 @@ function GestionEntraineurs() {
           prenom,
           nom,
           actif,
+          est_entraineur,
+          entraineur_enregistre,
           date_creation
         `)
         .eq(
-          "role",
-          "entraineur"
+          "entraineur_enregistre",
+          true
         )
         .order("nom")
         .order("prenom");
@@ -86,21 +88,25 @@ function GestionEntraineurs() {
   }
 
   // =========================================================
-  // ACTIVER / DÉSACTIVER
+  // RÉVOQUER / RÉACTIVER L'ACCÈS
   // =========================================================
 
   async function modifierAcces(
     entraineur
   ) {
+    const accesActif =
+      entraineur.actif &&
+      entraineur.est_entraineur;
+
     const action =
-      entraineur.actif
+      accesActif
         ? "revoquer_acces_entraineur"
         : "reactiver_acces_entraineur";
 
     const confirmation =
-      entraineur.actif
+      accesActif
         ? window.confirm(
-            `Révoquer l'accès de ${entraineur.prenom} ${entraineur.nom} ?`
+            `Révoquer l'accès entraîneur de ${entraineur.prenom} ${entraineur.nom} ?`
           )
         : true;
 
@@ -128,6 +134,50 @@ function GestionEntraineurs() {
 
       alert(
         `Impossible de modifier l'accès : ${error.message}`
+      );
+
+      return;
+    }
+
+    await chargerEntraineurs();
+  }
+
+  // =========================================================
+  // RETIRER COMPLÈTEMENT LE RÔLE ENTRAÎNEUR
+  // =========================================================
+
+  async function retirerEntraineur(
+    entraineur
+  ) {
+    const confirmation =
+      window.confirm(
+        `Retirer complètement ${entraineur.prenom} ${entraineur.nom} de la liste des entraîneurs ?\n\nCette action retirera son accès entraîneur et ses affectations, mais ne supprimera pas son compte ni ses autres accès.`
+      );
+
+    if (!confirmation) {
+      return;
+    }
+
+    setOperationEnCours(
+      `retirer-${entraineur.id}`
+    );
+
+    const { error } =
+      await supabase.rpc(
+        "retirer_entraineur",
+        {
+          p_entraineur_id:
+            entraineur.id,
+        }
+      );
+
+    setOperationEnCours(null);
+
+    if (error) {
+      console.error(error);
+
+      alert(
+        `Impossible de retirer l'entraîneur : ${error.message}`
       );
 
       return;
@@ -183,72 +233,107 @@ function GestionEntraineurs() {
       ) : (
         <div className="gestion-entraineurs-liste">
           {entraineurs.map(
-            (entraineur) => (
-              <article
-                key={entraineur.id}
-                className="gestion-entraineurs-carte"
-              >
-                <div className="gestion-entraineurs-identite">
-                  <div className="gestion-entraineurs-avatar">
-                    {(
-                      entraineur.prenom?.[0] ??
-                      ""
-                    ).toUpperCase()}
+            (entraineur) => {
+              const accesActif =
+                entraineur.actif &&
+                entraineur.est_entraineur;
 
-                    {(
-                      entraineur.nom?.[0] ??
-                      ""
-                    ).toUpperCase()}
+              const compteGlobalInactif =
+                !entraineur.actif;
+
+              return (
+                <article
+                  key={entraineur.id}
+                  className="gestion-entraineurs-carte"
+                >
+                  <div className="gestion-entraineurs-identite">
+                    <div className="gestion-entraineurs-avatar">
+                      {(
+                        entraineur.prenom?.[0] ??
+                        ""
+                      ).toUpperCase()}
+
+                      {(
+                        entraineur.nom?.[0] ??
+                        ""
+                      ).toUpperCase()}
+                    </div>
+
+                    <div>
+                      <h2>
+                        {entraineur.prenom}{" "}
+                        {entraineur.nom}
+                      </h2>
+
+                      <span
+                        className={
+                          accesActif
+                            ? "gestion-entraineurs-statut actif"
+                            : "gestion-entraineurs-statut inactif"
+                        }
+                      >
+                        {compteGlobalInactif
+                          ? "Compte désactivé"
+                          : accesActif
+                            ? "Accès actif"
+                            : "Accès révoqué"}
+                      </span>
+                    </div>
                   </div>
 
-                  <div>
-                    <h2>
-                      {entraineur.prenom}{" "}
-                      {entraineur.nom}
-                    </h2>
-
-                    <span
+                  <div className="gestion-entraineurs-actions">
+                    <button
+                      type="button"
                       className={
-                        entraineur.actif
-                          ? "gestion-entraineurs-statut actif"
-                          : "gestion-entraineurs-statut inactif"
+                        accesActif
+                          ? "admin-bouton admin-bouton-secondaire"
+                          : "admin-bouton admin-bouton-principal"
+                      }
+                      disabled={
+                        operationEnCours ===
+                          entraineur.id ||
+                        operationEnCours ===
+                          `retirer-${entraineur.id}` ||
+                        compteGlobalInactif
+                      }
+                      onClick={() =>
+                        modifierAcces(
+                          entraineur
+                        )
                       }
                     >
-                      {entraineur.actif
-                        ? "Accès actif"
-                        : "Accès révoqué"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="gestion-entraineurs-actions">
-                  <button
-                    type="button"
-                    className={
-                      entraineur.actif
-                        ? "admin-bouton admin-bouton-secondaire"
-                        : "admin-bouton admin-bouton-principal"
-                    }
-                    disabled={
-                      operationEnCours ===
+                      {operationEnCours ===
                       entraineur.id
-                    }
-                    onClick={() =>
-                      modifierAcces(
-                        entraineur
-                      )
-                    }
-                  >
-                    {operationEnCours ===
-                    entraineur.id
-                      ? "Traitement..."
-                      : entraineur.actif
-                        ? "Révoquer l'accès"
-                        : "Réactiver l'accès"}
-                  </button>
-                </div>
-              </article>
-            )
+                        ? "Traitement..."
+                        : accesActif
+                          ? "Révoquer l'accès"
+                          : "Réactiver l'accès"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="admin-bouton admin-bouton-secondaire"
+                      disabled={
+                        operationEnCours ===
+                          entraineur.id ||
+                        operationEnCours ===
+                          `retirer-${entraineur.id}`
+                      }
+                      onClick={() =>
+                        retirerEntraineur(
+                          entraineur
+                        )
+                      }
+                    >
+                      {operationEnCours ===
+                      `retirer-${entraineur.id}`
+                        ? "Retrait..."
+                        : "Retirer"}
+                    </button>
+                  </div>
+                </article>
+              );
+            }
           )}
         </div>
       )}

@@ -35,6 +35,15 @@ function GestionAdministrateurs() {
   const [envoi, setEnvoi] =
     useState(false);
 
+  const [
+    operationEnCours,
+    setOperationEnCours,
+  ] = useState(null);
+
+  // =========================================================
+  // CHARGEMENT
+  // =========================================================
+
   useEffect(() => {
     chargerAdministrateurs();
   }, []);
@@ -69,6 +78,10 @@ function GestionAdministrateurs() {
 
     setChargement(false);
   }
+
+  // =========================================================
+  // INVITATION
+  // =========================================================
 
   function ouvrirInvitation() {
     setPrenom("");
@@ -128,10 +141,8 @@ function GestionAdministrateurs() {
         body: {
           prenom:
             prenomNettoye,
-
           nom:
             nomNettoye,
-
           courriel:
             courrielNettoye,
         },
@@ -172,6 +183,10 @@ function GestionAdministrateurs() {
     await chargerAdministrateurs();
   }
 
+  // =========================================================
+  // RÉVOQUER
+  // =========================================================
+
   async function revoquerAdministrateur(
     administrateur
   ) {
@@ -192,6 +207,10 @@ function GestionAdministrateurs() {
       return;
     }
 
+    setOperationEnCours(
+      `revoquer-${administrateur.id}`
+    );
+
     setErreur("");
     setMessage("");
 
@@ -204,6 +223,8 @@ function GestionAdministrateurs() {
           administrateur.id,
       }
     );
+
+    setOperationEnCours(null);
 
     if (error) {
       console.error(error);
@@ -222,6 +243,115 @@ function GestionAdministrateurs() {
 
     await chargerAdministrateurs();
   }
+
+  // =========================================================
+  // RÉACTIVER
+  // =========================================================
+
+  async function reactiverAdministrateur(
+    administrateur
+  ) {
+    setOperationEnCours(
+      `reactiver-${administrateur.id}`
+    );
+
+    setErreur("");
+    setMessage("");
+
+    const {
+      error,
+    } = await supabase.rpc(
+      "reactiver_administrateur",
+      {
+        p_administrateur_id:
+          administrateur.id,
+      }
+    );
+
+    setOperationEnCours(null);
+
+    if (error) {
+      console.error(error);
+
+      setErreur(
+        error.message ??
+          "Impossible de réactiver cet administrateur."
+      );
+
+      return;
+    }
+
+    setMessage(
+      "Accès administrateur réactivé."
+    );
+
+    await chargerAdministrateurs();
+  }
+
+  // =========================================================
+  // RETIRER
+  // =========================================================
+
+  async function retirerAdministrateur(
+    administrateur
+  ) {
+    const nomComplet =
+      `${administrateur.prenom ?? ""} ${
+        administrateur.nom ?? ""
+      }`.trim();
+
+    const confirme =
+      window.confirm(
+        `Retirer complètement ${
+          nomComplet ||
+          administrateur.courriel
+        } de la liste des administrateurs ?\n\nCette action retirera son accès administrateur, mais ne supprimera pas son compte ni ses autres accès.`
+      );
+
+    if (!confirme) {
+      return;
+    }
+
+    setOperationEnCours(
+      `retirer-${administrateur.id}`
+    );
+
+    setErreur("");
+    setMessage("");
+
+    const {
+      error,
+    } = await supabase.rpc(
+      "retirer_administrateur",
+      {
+        p_administrateur_id:
+          administrateur.id,
+      }
+    );
+
+    setOperationEnCours(null);
+
+    if (error) {
+      console.error(error);
+
+      setErreur(
+        error.message ??
+          "Impossible de retirer cet administrateur."
+      );
+
+      return;
+    }
+
+    setMessage(
+      "Administrateur retiré."
+    );
+
+    await chargerAdministrateurs();
+  }
+
+  // =========================================================
+  // FORMATAGE
+  // =========================================================
 
   function formaterDate(date) {
     if (!date) {
@@ -261,6 +391,10 @@ function GestionAdministrateurs() {
     return "Actif";
   }
 
+  // =========================================================
+  // AFFICHAGE
+  // =========================================================
+
   return (
     <section className="gestion-administrateurs">
       <div className="gestion-administrateurs-entete">
@@ -274,7 +408,8 @@ function GestionAdministrateurs() {
           </h1>
 
           <p>
-            Gérez les personnes ayant accès à l'administration.
+            Gérez les personnes ayant accès à
+            l'administration.
           </p>
         </div>
 
@@ -336,7 +471,7 @@ function GestionAdministrateurs() {
                 </th>
 
                 <th>
-                  Action
+                  Actions
                 </th>
               </tr>
             </thead>
@@ -345,65 +480,120 @@ function GestionAdministrateurs() {
               {administrateurs.map(
                 (
                   administrateur
-                ) => (
-                  <tr
-                    key={
+                ) => {
+                  const traitement =
+                    operationEnCours?.endsWith(
                       administrateur.id
-                    }
-                  >
-                    <td>
-                      <strong>
-                        {administrateur.prenom}{" "}
-                        {administrateur.nom}
-                      </strong>
-                    </td>
+                    );
 
-                    <td>
-                      {administrateur.courriel}
-                    </td>
-
-                    <td>
-                      <span
-                        className={`gestion-administrateurs-statut statut-${administrateur.statut}`}
-                      >
-                        {libelleStatut(
-                          administrateur.statut
-                        )}
-                      </span>
-                    </td>
-
-                    <td>
-                      {formaterDate(
-                        administrateur.date_invitation
-                      )}
-                    </td>
-
-                    <td>
-                      {formaterDate(
-                        administrateur.derniere_connexion
-                      )}
-                    </td>
-
-                    <td>
-                      {administrateur.statut !==
-                      "revoque" ? (
-                        <button
-                          type="button"
-                          className="admin-bouton admin-bouton-danger"
-                          onClick={() =>
-                            revoquerAdministrateur(
-                              administrateur
-                            )
+                  return (
+                    <tr
+                      key={
+                        administrateur.id
+                      }
+                    >
+                      <td>
+                        <strong>
+                          {
+                            administrateur.prenom
+                          }{" "}
+                          {
+                            administrateur.nom
                           }
+                        </strong>
+                      </td>
+
+                      <td>
+                        {
+                          administrateur.courriel
+                        }
+                      </td>
+
+                      <td>
+                        <span
+                          className={`gestion-administrateurs-statut statut-${administrateur.statut}`}
                         >
-                          Révoquer
-                        </button>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                  </tr>
-                )
+                          {libelleStatut(
+                            administrateur.statut
+                          )}
+                        </span>
+                      </td>
+
+                      <td>
+                        {formaterDate(
+                          administrateur.date_invitation
+                        )}
+                      </td>
+
+                      <td>
+                        {formaterDate(
+                          administrateur.derniere_connexion
+                        )}
+                      </td>
+
+                      <td>
+                        <div className="gestion-administrateurs-actions">
+                          {administrateur.statut ===
+                          "revoque" ? (
+                            <button
+                              type="button"
+                              className="admin-bouton admin-bouton-principal"
+                              disabled={
+                                traitement
+                              }
+                              onClick={() =>
+                                reactiverAdministrateur(
+                                  administrateur
+                                )
+                              }
+                            >
+                              {operationEnCours ===
+                              `reactiver-${administrateur.id}`
+                                ? "Réactivation..."
+                                : "Réactiver"}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="admin-bouton admin-bouton-danger"
+                              disabled={
+                                traitement
+                              }
+                              onClick={() =>
+                                revoquerAdministrateur(
+                                  administrateur
+                                )
+                              }
+                            >
+                              {operationEnCours ===
+                              `revoquer-${administrateur.id}`
+                                ? "Révocation..."
+                                : "Révoquer"}
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            className="admin-bouton admin-bouton-secondaire"
+                            disabled={
+                              traitement
+                            }
+                            onClick={() =>
+                              retirerAdministrateur(
+                                administrateur
+                              )
+                            }
+                          >
+                            {operationEnCours ===
+                            `retirer-${administrateur.id}`
+                              ? "Retrait..."
+                              : "Retirer"}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                }
               )}
             </tbody>
           </table>
@@ -432,7 +622,8 @@ function GestionAdministrateurs() {
                 </h2>
 
                 <p>
-                  La personne recevra un courriel pour créer son accès.
+                  La personne recevra un courriel
+                  pour créer son accès.
                 </p>
               </div>
 

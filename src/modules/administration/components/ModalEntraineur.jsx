@@ -92,7 +92,9 @@ function ModalEntraineur({
       console.error(error);
 
       setMessage(
-        "Impossible d'envoyer l'invitation."
+        data?.error ??
+          error.message ??
+          "Impossible d'ajouter l'accès entraîneur."
       );
 
       return;
@@ -127,13 +129,15 @@ function ModalEntraineur({
         <div className="entraineur-modal-entete">
           <div>
             <h2>
-              Inviter un entraîneur
+              Ajouter un entraîneur
             </h2>
 
             <p>
-              L'entraîneur recevra une
-              invitation à son adresse
-              courriel.
+              Si cette personne possède déjà
+              un compte, l'accès entraîneur
+              sera ajouté à son compte actuel.
+              Sinon, elle recevra une invitation
+              par courriel.
             </p>
           </div>
 
@@ -235,8 +239,8 @@ function ModalEntraineur({
               disabled={envoiEnCours}
             >
               {envoiEnCours
-                ? "Envoi..."
-                : "Envoyer l'invitation"}
+                ? "Traitement..."
+                : "Ajouter l'entraîneur"}
             </button>
           </div>
         </form>

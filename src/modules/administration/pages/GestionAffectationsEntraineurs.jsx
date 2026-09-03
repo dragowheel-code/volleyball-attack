@@ -86,9 +86,10 @@ function GestionAffectationsEntraineurs() {
           id,
           prenom,
           nom,
-          actif
+          actif,
+          est_entraineur
         `)
-        .eq("role", "entraineur")
+        .eq("est_entraineur", true)
         .eq("actif", true)
         .order("nom")
         .order("prenom"),

@@ -1,44 +1,66 @@
 import { useEffect, useState } from "react";
-
 import { supabase } from "../../lib/supabaseClient";
-
 import "./AccepterInvitationAdministrateur.css";
 
 export default function AccepterInvitationAdministrateur() {
   const [chargement, setChargement] = useState(true);
   const [sessionValide, setSessionValide] = useState(false);
-  const [role, setRole] = useState(null);
-
+  const [acces, setAcces] = useState({
+    est_parent: false,
+    est_entraineur: false,
+    est_administrateur: false,
+  });
   const [motDePasse, setMotDePasse] = useState("");
   const [confirmation, setConfirmation] = useState("");
-
   const [enregistrement, setEnregistrement] = useState(false);
   const [erreur, setErreur] = useState("");
   const [succes, setSucces] = useState("");
 
-  async function chargerRole(userId) {
+  async function chargerAcces(userId) {
     if (!userId) {
-      setRole(null);
+      setAcces({
+        est_parent: false,
+        est_entraineur: false,
+        est_administrateur: false,
+      });
       return;
     }
 
     const { data, error } = await supabase
       .from("profils")
-      .select("role")
+      .select(`
+        est_parent,
+        est_entraineur,
+        est_administrateur,
+        actif
+      `)
       .eq("id", userId)
       .maybeSingle();
 
     if (error) {
-      console.error(
-        "Impossible de charger le rôle :",
-        error
-      );
-
-      setRole(null);
+      console.error("Impossible de charger les accès :", error);
+      setAcces({
+        est_parent: false,
+        est_entraineur: false,
+        est_administrateur: false,
+      });
       return;
     }
 
-    setRole(data?.role ?? null);
+    if (!data || data.actif !== true) {
+      setAcces({
+        est_parent: false,
+        est_entraineur: false,
+        est_administrateur: false,
+      });
+      return;
+    }
+
+    setAcces({
+      est_parent: data.est_parent === true,
+      est_entraineur: data.est_entraineur === true,
+      est_administrateur: data.est_administrateur === true,
+    });
   }
 
   useEffect(() => {
@@ -55,13 +77,14 @@ export default function AccepterInvitationAdministrateur() {
 
       if (session?.user) {
         setSessionValide(true);
-
-        await chargerRole(
-          session.user.id
-        );
+        await chargerAcces(session.user.id);
       } else {
         setSessionValide(false);
-        setRole(null);
+        setAcces({
+          est_parent: false,
+          est_entraineur: false,
+          est_administrateur: false,
+        });
       }
 
       if (actif) {
@@ -73,28 +96,27 @@ export default function AccepterInvitationAdministrateur() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (!actif) {
-          return;
-        }
-
-        if (session?.user) {
-          setSessionValide(true);
-
-          await chargerRole(
-            session.user.id
-          );
-        } else {
-          setSessionValide(false);
-          setRole(null);
-        }
-
-        if (actif) {
-          setChargement(false);
-        }
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!actif) {
+        return;
       }
-    );
+
+      if (session?.user) {
+        setSessionValide(true);
+        await chargerAcces(session.user.id);
+      } else {
+        setSessionValide(false);
+        setAcces({
+          est_parent: false,
+          est_entraineur: false,
+          est_administrateur: false,
+        });
+      }
+
+      if (actif) {
+        setChargement(false);
+      }
+    });
 
     return () => {
       actif = false;
@@ -104,32 +126,24 @@ export default function AccepterInvitationAdministrateur() {
 
   const enregistrerMotDePasse = async (event) => {
     event.preventDefault();
-
     setErreur("");
     setSucces("");
 
     if (motDePasse.length < 8) {
-      setErreur(
-        "Le mot de passe doit contenir au moins 8 caractères."
-      );
-
+      setErreur("Le mot de passe doit contenir au moins 8 caractères.");
       return;
     }
 
     if (motDePasse !== confirmation) {
-      setErreur(
-        "Les deux mots de passe ne correspondent pas."
-      );
-
+      setErreur("Les deux mots de passe ne correspondent pas.");
       return;
     }
 
     setEnregistrement(true);
 
-    const { error } =
-      await supabase.auth.updateUser({
-        password: motDePasse,
-      });
+    const { error } = await supabase.auth.updateUser({
+      password: motDePasse,
+    });
 
     setEnregistrement(false);
 
@@ -141,37 +155,56 @@ export default function AccepterInvitationAdministrateur() {
     setMotDePasse("");
     setConfirmation("");
 
-    if (role === "entraineur") {
+    if (acces.est_administrateur && acces.est_entraineur) {
       setSucces(
-        "Votre accès entraîneur est maintenant activé."
+        "Vos accès administrateur et entraîneur sont maintenant activés."
       );
-    } else if (
-      role === "administrateur"
-    ) {
-      setSucces(
-        "Votre accès administrateur est maintenant activé."
-      );
+    } else if (acces.est_administrateur) {
+      setSucces("Votre accès administrateur est maintenant activé.");
+    } else if (acces.est_entraineur) {
+      setSucces("Votre accès entraîneur est maintenant activé.");
+    } else if (acces.est_parent) {
+      setSucces("Votre accès parent est maintenant activé.");
     } else {
-      setSucces(
-        "Votre accès est maintenant activé."
-      );
+      setSucces("Votre accès est maintenant activé.");
     }
   };
 
-  const libelleRole =
-    role === "entraineur"
-      ? "entraîneur"
-      : role === "administrateur"
-        ? "administrateur"
-        : "";
+  function libelleAcces() {
+    const libelles = [];
+
+    if (acces.est_parent) {
+      libelles.push("parent");
+    }
+
+    if (acces.est_entraineur) {
+      libelles.push("entraîneur");
+    }
+
+    if (acces.est_administrateur) {
+      libelles.push("administrateur");
+    }
+
+    if (libelles.length === 0) {
+      return "";
+    }
+
+    if (libelles.length === 1) {
+      return ` ${libelles[0]}`;
+    }
+
+    if (libelles.length === 2) {
+      return ` ${libelles[0]} et ${libelles[1]}`;
+    }
+
+    return ` ${libelles[0]}, ${libelles[1]} et ${libelles[2]}`;
+  }
 
   if (chargement) {
     return (
       <div className="acceptation-admin-page">
         <div className="acceptation-admin-carte">
-          <p>
-            Validation de l'invitation...
-          </p>
+          <p>Validation de l'invitation...</p>
         </div>
       </div>
     );
@@ -181,10 +214,7 @@ export default function AccepterInvitationAdministrateur() {
     return (
       <div className="acceptation-admin-page">
         <div className="acceptation-admin-carte">
-          <h1>
-            Invitation
-          </h1>
-
+          <h1>Invitation</h1>
           <div className="acceptation-admin-erreur">
             Cette invitation est invalide ou expirée.
           </div>
@@ -199,11 +229,8 @@ export default function AccepterInvitationAdministrateur() {
         <h1>Bienvenue</h1>
 
         <p className="acceptation-admin-description">
-          Choisissez votre mot de passe pour terminer
-          l'activation de votre accès
-          {libelleRole
-            ? ` ${libelleRole}`
-            : ""}.
+          Choisissez votre mot de passe pour terminer l'activation de votre
+          accès{libelleAcces()}.
         </p>
 
         {erreur && (
@@ -214,13 +241,10 @@ export default function AccepterInvitationAdministrateur() {
 
         {succes ? (
           <div className="acceptation-admin-succes">
-            <strong>
-              {succes}
-            </strong>
+            <strong>{succes}</strong>
 
             <p>
-              Vous pouvez maintenant accéder à
-              l'application.
+              Vous pouvez maintenant accéder à l'application.
             </p>
 
             <button
@@ -240,15 +264,10 @@ export default function AccepterInvitationAdministrateur() {
           >
             <label>
               Nouveau mot de passe
-
               <input
                 type="password"
                 value={motDePasse}
-                onChange={(event) =>
-                  setMotDePasse(
-                    event.target.value
-                  )
-                }
+                onChange={(event) => setMotDePasse(event.target.value)}
                 autoComplete="new-password"
                 required
               />
@@ -256,15 +275,10 @@ export default function AccepterInvitationAdministrateur() {
 
             <label>
               Confirmer le mot de passe
-
               <input
                 type="password"
                 value={confirmation}
-                onChange={(event) =>
-                  setConfirmation(
-                    event.target.value
-                  )
-                }
+                onChange={(event) => setConfirmation(event.target.value)}
                 autoComplete="new-password"
                 required
               />
@@ -275,9 +289,7 @@ export default function AccepterInvitationAdministrateur() {
               className="acceptation-admin-bouton"
               disabled={enregistrement}
             >
-              {enregistrement
-                ? "Activation..."
-                : "Activer mon accès"}
+              {enregistrement ? "Activation..." : "Activer mon accès"}
             </button>
           </form>
         )}
