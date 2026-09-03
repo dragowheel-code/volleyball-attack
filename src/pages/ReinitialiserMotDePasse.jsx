@@ -17,8 +17,8 @@ function ReinitialiserMotDePasse() {
       if (!actif) return;
 
       if (error) {
-        console.error(error);
-        setMessage("Impossible de valider le lien de réinitialisation.");
+        console.error("Erreur getSession :", error);
+        setMessage(`Erreur Supabase : ${error.message}`);
         return;
       }
 
@@ -34,7 +34,10 @@ function ReinitialiserMotDePasse() {
     } = supabase.auth.onAuthStateChange((event, session) => {
       if (!actif) return;
 
-      if ((event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") && session) {
+      if (
+        (event === "PASSWORD_RECOVERY" || event === "SIGNED_IN") &&
+        session
+      ) {
         setSessionPrete(true);
         setMessage("");
       }
@@ -69,17 +72,15 @@ function ReinitialiserMotDePasse() {
     setTraitement(false);
 
     if (error) {
-      console.error(error);
-      setMessage(
-        "Impossible de modifier le mot de passe. Le lien est peut-être expiré."
-      );
+      console.error("Erreur updateUser :", error);
+      setMessage(`Erreur Supabase : ${error.message}`);
       return;
     }
 
+    setMessage("Mot de passe modifié avec succès. Retour à la connexion...");
+
     await supabase.auth.signOut();
     sessionStorage.removeItem("volleyball-attack-espace");
-
-    setMessage("Mot de passe modifié avec succès. Retour à la connexion...");
 
     setTimeout(() => {
       window.location.href = "/";
@@ -93,13 +94,22 @@ function ReinitialiserMotDePasse() {
           <h2>Réinitialiser le mot de passe</h2>
 
           {!sessionPrete ? (
-            <p className="message-creation">
-              Validation du lien de réinitialisation...
-            </p>
+            <>
+              <p className="message-creation">
+                Validation du lien de réinitialisation...
+              </p>
+
+              {message && (
+                <p className="message-creation">{message}</p>
+              )}
+            </>
           ) : (
             <form className="formulaire-connexion" onSubmit={soumettre}>
               <div className="champ-formulaire">
-                <label htmlFor="nouveau-mot-passe">Nouveau mot de passe</label>
+                <label htmlFor="nouveau-mot-passe">
+                  Nouveau mot de passe
+                </label>
+
                 <input
                   id="nouveau-mot-passe"
                   type="password"
@@ -114,6 +124,7 @@ function ReinitialiserMotDePasse() {
                 <label htmlFor="confirmation-mot-passe">
                   Confirmer le mot de passe
                 </label>
+
                 <input
                   id="confirmation-mot-passe"
                   type="password"
@@ -124,20 +135,20 @@ function ReinitialiserMotDePasse() {
                 />
               </div>
 
-              {message && <p className="message-creation">{message}</p>}
+              {message && (
+                <p className="message-creation">{message}</p>
+              )}
 
               <button
                 type="submit"
                 className="bouton bouton-principal"
                 disabled={traitement}
               >
-                {traitement ? "Modification..." : "Modifier le mot de passe"}
+                {traitement
+                  ? "Modification..."
+                  : "Modifier le mot de passe"}
               </button>
             </form>
-          )}
-
-          {!sessionPrete && message && (
-            <p className="message-creation">{message}</p>
           )}
         </section>
       </div>
