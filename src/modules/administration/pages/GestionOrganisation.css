@@ -1,0 +1,115 @@
+.gestion-organisation {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.gestion-organisation-entete h1 {
+  margin: 0 0 6px;
+}
+
+.gestion-organisation-entete p {
+  margin: 0;
+  color: #5f6670;
+}
+
+.gestion-organisation-formulaire {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.gestion-organisation-section {
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #e1e4e8;
+  border-radius: 12px;
+}
+
+.gestion-organisation-section h2 {
+  margin: 0 0 18px;
+  font-size: 1.15rem;
+}
+
+.gestion-organisation-grille {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.gestion-organisation-section label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.gestion-organisation-section input,
+.gestion-organisation-section textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 11px 12px;
+  border: 1px solid #cfd4da;
+  border-radius: 8px;
+  background: #fff;
+  color: #20242a;
+  font: inherit;
+}
+
+.gestion-organisation-section input:focus,
+.gestion-organisation-section textarea:focus {
+  outline: none;
+  border-color: #6c757d;
+}
+
+.gestion-organisation-section textarea {
+  resize: vertical;
+  min-height: 110px;
+}
+
+.gestion-organisation-large {
+  grid-column: 1 / -1;
+}
+
+.gestion-organisation-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.gestion-organisation-erreur,
+.gestion-organisation-succes,
+.gestion-organisation-vide {
+  padding: 14px 16px;
+  border-radius: 8px;
+}
+
+.gestion-organisation-erreur {
+  background: #f8d7da;
+  border: 1px solid #f1aeb5;
+  color: #842029;
+}
+
+.gestion-organisation-succes {
+  background: #d1e7dd;
+  border: 1px solid #a3cfbb;
+  color: #0f5132;
+}
+
+.gestion-organisation-vide {
+  background: #fff;
+  border: 1px solid #e1e4e8;
+}
+
+@media (max-width: 700px) {
+  .gestion-organisation-grille {
+    grid-template-columns: 1fr;
+  }
+
+  .gestion-organisation-large {
+    grid-column: auto;
+  }
+
+  .gestion-organisation-section {
+    padding: 16px;
+  }
+}

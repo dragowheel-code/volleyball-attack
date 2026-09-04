@@ -3,10 +3,8 @@ import {
   useMemo,
   useState,
 } from "react";
-
 import { supabase } from "../../lib/supabaseClient";
 import "./ModalInscription.css";
-
 function ModalInscription({
   cours,
   groupe,
@@ -18,29 +16,31 @@ function ModalInscription({
   const [annees, setAnnees] = useState([]);
   const [niveaux, setNiveaux] = useState([]);
   const [politiques, setPolitiques] = useState([]);
-
   const [enfantId, setEnfantId] = useState("");
   const [anneeScolaireId, setAnneeScolaireId] = useState("");
   const [niveauVolleyballId, setNiveauVolleyballId] = useState("");
   const [codeAcces, setCodeAcces] = useState("");
-
+  const [nombreVersements, setNombreVersements] = useState(1);
   const [reponsesPolitiques, setReponsesPolitiques] = useState({});
-
   const [chargement, setChargement] = useState(true);
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
   const [succes, setSucces] = useState("");
-
   const demanderNiveau =
     cours?.demander_niveau_volleyball === true;
-
   const accesParCode =
     cours?.type_acces &&
     cours.type_acces !== "public";
-
+  const prixEnCents = Math.round(Number(cours?.prix ?? 0) * 100);
+  const montantVersement1Cents = Math.round(prixEnCents / 2);
+  const montantVersement2Cents = prixEnCents - montantVersement1Cents;
+  const formaterMontant = (montantEnCents) =>
+    new Intl.NumberFormat("fr-CA", {
+      style: "currency",
+      currency: "CAD",
+    }).format(montantEnCents / 100);
   useEffect(() => {
     let actif = true;
-
     async function chargerDonnees() {
       try {
         const [
@@ -61,7 +61,6 @@ function ModalInscription({
                 sexe
               )
             `),
-
           supabase
             .from("cours_annees_scolaires")
             .select(`
@@ -77,7 +76,6 @@ function ModalInscription({
               )
             `)
             .eq("cours_id", cours.id),
-
           supabase
             .from("cours_niveaux_volleyball")
             .select(`
@@ -92,7 +90,6 @@ function ModalInscription({
               )
             `)
             .eq("cours_id", cours.id),
-
           supabase
             .from("saisons_politiques")
             .select(`
@@ -113,31 +110,24 @@ function ModalInscription({
             `)
             .eq("saison_id", saisonId),
         ]);
-
         if (!actif) {
           return;
         }
-
         if (resultatEnfants.error) {
           throw resultatEnfants.error;
         }
-
         if (resultatAnnees.error) {
           throw resultatAnnees.error;
         }
-
         if (resultatNiveaux.error) {
           throw resultatNiveaux.error;
         }
-
         if (resultatPolitiques.error) {
           throw resultatPolitiques.error;
         }
-
         const listeEnfants = (resultatEnfants.data ?? [])
           .map((ligne) => ligne.enfants)
           .filter((enfant) => enfant?.id);
-
         const listeAnnees = (resultatAnnees.data ?? [])
           .map((ligne) => ({
             ...ligne.annees_scolaires,
@@ -148,7 +138,6 @@ function ModalInscription({
             (a, b) =>
               (a.ordre ?? 0) - (b.ordre ?? 0)
           );
-
         const listeNiveaux = (resultatNiveaux.data ?? [])
           .map((ligne) => ligne.niveaux_volleyball)
           .filter((niveau) => niveau?.id && niveau.actif !== false)
@@ -156,16 +145,13 @@ function ModalInscription({
             (a, b) =>
               (a.ordre ?? 0) - (b.ordre ?? 0)
           );
-
         const listePolitiques = (resultatPolitiques.data ?? [])
           .map((ligne) => {
             const version = ligne.politique_versions;
             const politique = version?.politiques;
-
             if (!version?.id || !politique?.type) {
               return null;
             }
-
             return {
               id: ligne.id,
               type: politique.type,
@@ -177,20 +163,16 @@ function ModalInscription({
             };
           })
           .filter(Boolean);
-
         setEnfants(listeEnfants);
         setAnnees(listeAnnees);
         setNiveaux(listeNiveaux);
         setPolitiques(listePolitiques);
-
         if (listeEnfants.length === 1) {
           setEnfantId(listeEnfants[0].id);
         }
-
         if (listeAnnees.length === 1) {
           setAnneeScolaireId(listeAnnees[0].id);
         }
-
         if (demanderNiveau && listeNiveaux.length === 1) {
           setNiveauVolleyballId(listeNiveaux[0].id);
         }
@@ -199,7 +181,6 @@ function ModalInscription({
           "Erreur lors du chargement de l'inscription :",
           error
         );
-
         if (actif) {
           setErreur(
             "Impossible de charger les informations nécessaires à l'inscription."
@@ -211,76 +192,58 @@ function ModalInscription({
         }
       }
     }
-
     chargerDonnees();
-
     return () => {
       actif = false;
     };
   }, [cours.id, demanderNiveau, saisonId]);
-
   const politiquesParType = useMemo(() => {
     const resultat = {};
-
     for (const politique of politiques) {
       resultat[politique.type] = politique;
     }
-
     return resultat;
   }, [politiques]);
-
   function changerReponsePolitique(type, valeur) {
     setReponsesPolitiques((etatActuel) => ({
       ...etatActuel,
       [type]: valeur,
     }));
   }
-
   function reponsePolitique(type) {
     return reponsesPolitiques[type];
   }
-
   function parametrePolitique(type) {
     return reponsesPolitiques[type] === true;
   }
-
   function validerFormulaire() {
     if (!enfantId) {
       return "Veuillez choisir un enfant.";
     }
-
     if (!anneeScolaireId) {
       return "Veuillez choisir l'année scolaire de l'enfant.";
     }
-
     if (demanderNiveau && !niveauVolleyballId) {
       return "Veuillez choisir le niveau de volleyball.";
     }
-
     if (accesParCode && !codeAcces.trim()) {
       return "Veuillez entrer le code d'accès.";
     }
-
     const typesRequis = [
       "code_conduite",
       "intervention",
       "photos_videos",
       "remboursement",
     ];
-
     for (const type of typesRequis) {
       const politique = politiquesParType[type];
-
       if (!politique) {
         return `La politique « ${type} » n'est pas disponible pour cette saison.`;
       }
-
       const reponse = reponsePolitique(type);
-
       if (reponse !== true && reponse !== false) {
         return `Veuillez répondre à la politique « ${politique.titre} ».`;
       }
-
       if (
         politique.obligatoire &&
         !politique.refusAutorise &&
@@ -289,29 +252,21 @@ function ModalInscription({
         return `Vous devez accepter la politique « ${politique.titre} » pour poursuivre.`;
       }
     }
-
     return "";
   }
-
   async function soumettreInscription(event) {
     event.preventDefault();
-
     if (envoiEnCours) {
       return;
     }
-
     setErreur("");
     setSucces("");
-
     const erreurValidation = validerFormulaire();
-
     if (erreurValidation) {
       setErreur(erreurValidation);
       return;
     }
-
     setEnvoiEnCours(true);
-
     const { data, error } = await supabase.rpc(
       "creer_inscription_parent",
       {
@@ -334,33 +289,27 @@ function ModalInscription({
           parametrePolitique("photos_videos"),
         p_accepte_remboursement:
           parametrePolitique("remboursement"),
+        p_nombre_versements: nombreVersements,
       }
     );
-
     setEnvoiEnCours(false);
-
     if (error) {
       console.error(
         "Erreur lors de l'inscription :",
         error
       );
-
       setErreur(
         error.message ||
           "Impossible de compléter l'inscription."
       );
-
       return;
     }
-
     const resultat = Array.isArray(data)
       ? data[0]
       : data;
-
     if (resultat?.statut === "liste_attente") {
       const position =
         resultat?.position_liste_attente;
-
       setSucces(
         position
           ? `L'enfant a été ajouté à la liste d'attente en position ${position}.`
@@ -371,17 +320,14 @@ function ModalInscription({
         "L'inscription a été créée. Elle est maintenant en attente de paiement."
       );
     }
-
     if (onInscriptionCreee) {
       onInscriptionCreee(resultat);
     }
   }
-
   function rendrePolitique(politique) {
     const valeur = reponsePolitique(
       politique.type
     );
-
     return (
       <div
         key={politique.type}
@@ -393,11 +339,9 @@ function ModalInscription({
             Version {politique.version}
           </span>
         </div>
-
         <div className="inscription-politique-contenu">
           {politique.contenu}
         </div>
-
         {politique.refusAutorise ? (
           <div className="inscription-reponses">
             <label>
@@ -414,7 +358,6 @@ function ModalInscription({
               />
               Oui
             </label>
-
             <label>
               <input
                 type="radio"
@@ -448,7 +391,6 @@ function ModalInscription({
       </div>
     );
   }
-
   return (
     <div className="modale-inscription-fond">
       <div className="modale-inscription">
@@ -462,7 +404,6 @@ function ModalInscription({
                 : ""}
             </p>
           </div>
-
           <button
             type="button"
             className="bouton bouton-secondaire"
@@ -472,7 +413,6 @@ function ModalInscription({
             Fermer
           </button>
         </div>
-
         {chargement ? (
           <p className="etat-vide">
             Chargement...
@@ -496,7 +436,6 @@ function ModalInscription({
                 <option value="">
                   Choisir un enfant
                 </option>
-
                 {enfants.map((enfant) => (
                   <option
                     key={enfant.id}
@@ -508,7 +447,6 @@ function ModalInscription({
                 ))}
               </select>
             </label>
-
             <label>
               Année scolaire
               <select
@@ -523,7 +461,6 @@ function ModalInscription({
                 <option value="">
                   Choisir l'année scolaire
                 </option>
-
                 {annees.map((annee) => (
                   <option
                     key={annee.id}
@@ -538,7 +475,6 @@ function ModalInscription({
                 ))}
               </select>
             </label>
-
             {demanderNiveau && (
               <label>
                 Niveau de volleyball
@@ -554,7 +490,6 @@ function ModalInscription({
                   <option value="">
                     Choisir un niveau
                   </option>
-
                   {niveaux.map((niveau) => (
                     <option
                       key={niveau.id}
@@ -566,7 +501,6 @@ function ModalInscription({
                 </select>
               </label>
             )}
-
             {accesParCode && (
               <label>
                 Code d'accès
@@ -583,12 +517,44 @@ function ModalInscription({
                 />
               </label>
             )}
-
+            <div className="inscription-paiement">
+              <h2>Mode de paiement</h2>
+              <label className="inscription-option-paiement">
+                <input
+                  type="radio"
+                  name="nombre-versements"
+                  value="1"
+                  checked={nombreVersements === 1}
+                  onChange={() => setNombreVersements(1)}
+                  disabled={envoiEnCours}
+                />
+                <span>
+                  <strong>1 paiement</strong>
+                  <small>{formaterMontant(prixEnCents)}</small>
+                </span>
+              </label>
+              <label className="inscription-option-paiement">
+                <input
+                  type="radio"
+                  name="nombre-versements"
+                  value="2"
+                  checked={nombreVersements === 2}
+                  onChange={() => setNombreVersements(2)}
+                  disabled={envoiEnCours}
+                />
+                <span>
+                  <strong>2 paiements de 50 %</strong>
+                  <small>
+                    {formaterMontant(montantVersement1Cents)} puis{" "}
+                    {formaterMontant(montantVersement2Cents)}
+                  </small>
+                </span>
+              </label>
+            </div>
             <div className="inscription-politiques">
               <h2>
                 Consentements et politiques
               </h2>
-
               {politiques.length === 0 ? (
                 <p className="etat-vide">
                   Aucune politique n'est
@@ -600,19 +566,16 @@ function ModalInscription({
                 )
               )}
             </div>
-
             {erreur && (
               <div className="inscription-message inscription-message-erreur">
                 {erreur}
               </div>
             )}
-
             {succes && (
               <div className="inscription-message inscription-message-succes">
                 {succes}
               </div>
             )}
-
             <div className="modale-inscription-actions">
               <button
                 type="button"
@@ -622,7 +585,6 @@ function ModalInscription({
               >
                 Annuler
               </button>
-
               <button
                 type="submit"
                 className="bouton bouton-principal"
@@ -642,5 +604,4 @@ function ModalInscription({
     </div>
   );
 }
-
 export default ModalInscription;

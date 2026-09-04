@@ -79,13 +79,68 @@ function EspaceParent({ profil }) {
     setContactEnModification,
   ] = useState(null);
   // =========================================================
+  // INSCRIPTIONS
+  // =========================================================
+  const [inscriptions, setInscriptions] = useState([]);
+  const [chargementInscriptions, setChargementInscriptions] = useState(true);
+  const [erreurInscriptions, setErreurInscriptions] = useState("");
+  // =========================================================
   // CHARGEMENT INITIAL
   // =========================================================
   useEffect(() => {
     chargerEnfants();
     chargerParentsFamille();
     chargerContactsUrgence();
+    chargerInscriptions();
   }, []);
+  // =========================================================
+  // CHARGEMENT DES INSCRIPTIONS
+  // =========================================================
+  async function chargerInscriptions() {
+    setChargementInscriptions(true);
+    setErreurInscriptions("");
+    const { data, error } = await supabase.rpc("lister_mes_inscriptions_parent");
+    if (error) {
+      console.error("Erreur lors du chargement des inscriptions :", error);
+      setInscriptions([]);
+      setErreurInscriptions("Impossible de charger vos inscriptions.");
+      setChargementInscriptions(false);
+      return;
+    }
+    setInscriptions(data || []);
+    setChargementInscriptions(false);
+  }
+  function formaterMontant(valeur) {
+    return new Intl.NumberFormat("fr-CA", {
+      style: "currency",
+      currency: "CAD",
+    }).format(Number(valeur ?? 0));
+  }
+  function formaterDatePaiement(valeur) {
+    if (!valeur) return "";
+    return new Intl.DateTimeFormat("fr-CA", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(valeur));
+  }
+  function libelleStatutInscription(statut) {
+    const libelles = {
+      en_attente_paiement: "En attente de paiement",
+      confirmee: "Confirmée",
+      liste_attente: "Liste d'attente",
+      annulee: "Annulée",
+    };
+    return libelles[statut] ?? statut ?? "—";
+  }
+  function libelleStatutPaiement(statut) {
+    const libelles = {
+      a_recevoir: "À recevoir",
+      recu: "Reçu",
+      rembourse: "Remboursé",
+    };
+    return libelles[statut] ?? statut ?? "—";
+  }
   // =========================================================
   // CHARGEMENT DES ENFANTS
   // =========================================================
@@ -879,17 +934,111 @@ async function enregistrerProfilParent(
           </article>
           {/* MES INSCRIPTIONS */}
           <article className="carte-espace-parent">
-            <h2>Mes inscriptions</h2>
-            <p className="etat-vide">
-              Aucune inscription pour la saison active.
-            </p>
-            <button
-              type="button"
-              className="bouton bouton-secondaire"
-              onClick={() => setAfficherActivites(true)}
-            >
-              Voir les activités disponibles
-            </button>
+            <div className="entete-carte-parent">
+              <h2>Mes inscriptions</h2>
+              <button
+                type="button"
+                className="bouton bouton-secondaire"
+                onClick={() => setAfficherActivites(true)}
+              >
+                Voir les activités disponibles
+              </button>
+            </div>
+            {chargementInscriptions ? (
+              <p className="etat-vide">Chargement...</p>
+            ) : erreurInscriptions ? (
+              <p className="etat-vide">{erreurInscriptions}</p>
+            ) : inscriptions.length === 0 ? (
+              <p className="etat-vide">
+                Aucune inscription pour la saison active.
+              </p>
+            ) : (
+              <div className="liste-enfants">
+                {inscriptions.map((inscription) => {
+                  const paiements = Array.isArray(inscription.paiements)
+                    ? inscription.paiements
+                    : [];
+                  return (
+                    <article
+                      key={inscription.inscription_id}
+                      className="fiche-enfant"
+                    >
+                      <div>
+                        <h3>
+                          {inscription.enfant_prenom}{" "}
+                          {inscription.enfant_nom}
+                        </h3>
+                        <p>
+                          <strong>{inscription.cours_nom}</strong>
+                          {inscription.groupe_nom
+                            ? ` — ${inscription.groupe_nom}`
+                            : ""}
+                        </p>
+                        <p>
+                          Statut :{" "}
+                          <strong>
+                            {libelleStatutInscription(
+                              inscription.statut_inscription
+                            )}
+                          </strong>
+                        </p>
+                        {inscription.statut_inscription === "liste_attente" &&
+                          inscription.position_liste_attente && (
+                            <p>
+                              Position sur la liste d'attente :{" "}
+                              <strong>{inscription.position_liste_attente}</strong>
+                            </p>
+                          )}
+                        <p>
+                          Prix :{" "}
+                          <strong>{formaterMontant(inscription.prix_facture)}</strong>
+                        </p>
+                        {paiements.length > 0 && (
+                          <div>
+                            <p>
+                              <strong>
+                                Paiement
+                                {Number(inscription.nombre_versements ?? 1) > 1
+                                  ? "s"
+                                  : ""}
+                              </strong>
+                            </p>
+                            {paiements.map((paiement) => (
+                              <p key={paiement.id}>
+                                Versement {paiement.numero_versement ?? 1}/
+                                {inscription.nombre_versements ?? paiements.length}{" "}
+                                — {formaterMontant(paiement.montant)} —{" "}
+                                <strong>
+                                  {libelleStatutPaiement(paiement.statut)}
+                                </strong>
+                                {paiement.date_paiement
+                                  ? ` — ${formaterDatePaiement(
+                                      paiement.date_paiement
+                                    )}`
+                                  : ""}
+                              </p>
+                            ))}
+                          </div>
+                        )}
+                        {Number(inscription.montant_rembourse ?? 0) > 0 && (
+                          <p>
+                            Remboursé :{" "}
+                            <strong>
+                              {formaterMontant(inscription.montant_rembourse)}
+                            </strong>
+                            {inscription.date_remboursement
+                              ? ` — ${formaterDatePaiement(
+                                  inscription.date_remboursement
+                                )}`
+                              : ""}
+                          </p>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </article>
           {/* MON PROFIL */}
           <article className="carte-espace-parent">

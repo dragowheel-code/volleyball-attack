@@ -31,10 +31,8 @@ function GestionInscriptions() {
     useState(false);
   const [offrePlaceEnCours, setOffrePlaceEnCours] =
     useState(null);
-
   const [annulationEnCours, setAnnulationEnCours] =
     useState(null);
-
   const [remboursementEnCours, setRemboursementEnCours] =
     useState(null);
   useEffect(() => {
@@ -142,6 +140,10 @@ function GestionInscriptions() {
         date_confirmation,
         date_annulation,
         notes_administration,
+        nombre_versements,
+        montant_rembourse,
+        date_remboursement,
+        note_remboursement,
         enfants (
           id,
           prenom,
@@ -149,11 +151,11 @@ function GestionInscriptions() {
         ),
         paiements (
           id,
+          numero_versement,
           statut,
           montant,
           reference,
-          date_paiement,
-          montant_rembourse
+          date_paiement
         )
       `)
       .in("groupe_id", idsGroupes)
@@ -281,23 +283,44 @@ function GestionInscriptions() {
       }
     ).format(new Date(date));
   }
-  function obtenirPaiement(inscription) {
-    if (
-      Array.isArray(inscription.paiements)
-    ) {
-      return inscription.paiements[0] ?? null;
-    }
-    return inscription.paiements ?? null;
-  }
-  function ouvrirConfirmationPaiement(
-    inscription
-  ) {
-    const paiement =
-      obtenirPaiement(inscription);
-    setInscriptionPaiement(inscription);
-    setReferencePaiement(
-      paiement?.reference ?? ""
+  function obtenirPaiements(inscription) {
+    const paiements = Array.isArray(inscription.paiements)
+      ? inscription.paiements
+      : inscription.paiements
+      ? [inscription.paiements]
+      : [];
+    return [...paiements].sort(
+      (a, b) =>
+        Number(a.numero_versement ?? 1) -
+        Number(b.numero_versement ?? 1)
     );
+  }
+  function obtenirProchainPaiement(inscription) {
+    return (
+      obtenirPaiements(inscription).find(
+        (paiement) => paiement.statut === "a_recevoir"
+      ) ?? null
+    );
+  }
+  function obtenirMontantRecu(inscription) {
+    return obtenirPaiements(inscription).reduce(
+      (total, paiement) =>
+        paiement.statut === "recu"
+          ? total + Number(paiement.montant ?? 0)
+          : total,
+      0
+    );
+  }
+  function ouvrirConfirmationPaiement(inscription) {
+    const paiement = obtenirProchainPaiement(inscription);
+    if (!paiement) {
+      return;
+    }
+    setInscriptionPaiement({
+      ...inscription,
+      paiementAConfirmer: paiement,
+    });
+    setReferencePaiement(paiement.reference ?? "");
     setErreur("");
   }
   function fermerConfirmationPaiement() {
@@ -311,7 +334,6 @@ function GestionInscriptions() {
     if (inscription.statut !== "liste_attente") {
       return false;
     }
-
     const inscriptionsAttenteGroupe = inscriptions
       .filter(
         (item) =>
@@ -323,19 +345,15 @@ function GestionInscriptions() {
           new Date(a.date_inscription).getTime() -
           new Date(b.date_inscription).getTime()
       );
-
     return inscriptionsAttenteGroupe[0]?.id === inscription.id;
   }
-
   function groupeAUnePlaceDisponible(groupeId) {
     const groupe = inscriptions.find(
       (item) => item.groupe_id === groupeId
     )?.groupe;
-
     if (!groupe) {
       return false;
     }
-
     const placesOccupees = inscriptions.filter(
       (item) =>
         item.groupe_id === groupeId &&
@@ -344,36 +362,28 @@ function GestionInscriptions() {
           item.statut === "confirmee"
         )
     ).length;
-
     return placesOccupees < groupe.capacite;
   }
-
   async function offrirProchainePlace(inscription) {
     if (!inscription?.groupe_id) {
       return;
     }
-
     const nomGroupe =
       inscription.groupe?.nom ?? "ce groupe";
-
     const confirmation = window.confirm(
       `Offrir la prochaine place disponible dans ${nomGroupe} ?`
     );
-
     if (!confirmation) {
       return;
     }
-
     setErreur("");
     setOffrePlaceEnCours(inscription.groupe_id);
-
     const { error: erreurOffre } = await supabase.rpc(
       "offrir_prochaine_place",
       {
         p_groupe_id: inscription.groupe_id,
       }
     );
-
     if (erreurOffre) {
       console.error(erreurOffre);
       setErreur(
@@ -383,38 +393,30 @@ function GestionInscriptions() {
       setOffrePlaceEnCours(null);
       return;
     }
-
     setOffrePlaceEnCours(null);
     await chargerInscriptions();
   }
-
   async function annulerInscription(inscription) {
     if (!inscription?.id) {
       return;
     }
-
     const nomEnfant =
       `${inscription.enfants?.prenom ?? ""} ${
         inscription.enfants?.nom ?? ""
       }`.trim();
-
     const confirmation = window.confirm(
       `Annuler l'inscription de ${nomEnfant || "cet enfant"} ?`
     );
-
     if (!confirmation) {
       return;
     }
-
     const note =
       window.prompt(
         "Note administrative facultative pour cette annulation :",
         ""
       ) ?? "";
-
     setErreur("");
     setAnnulationEnCours(inscription.id);
-
     const { error: erreurAnnulation } = await supabase.rpc(
       "annuler_inscription_admin",
       {
@@ -422,7 +424,6 @@ function GestionInscriptions() {
         p_note: note.trim() || null,
       }
     );
-
     if (erreurAnnulation) {
       console.error(erreurAnnulation);
       setErreur(
@@ -432,39 +433,28 @@ function GestionInscriptions() {
       setAnnulationEnCours(null);
       return;
     }
-
     setAnnulationEnCours(null);
     await chargerInscriptions();
   }
-
   async function marquerPaiementRembourse(inscription) {
     if (!inscription?.id) {
       return;
     }
-
-    const paiement =
-      obtenirPaiement(inscription);
-
-    if (!paiement || paiement.statut !== "recu") {
+    const montantRecu = obtenirMontantRecu(inscription);
+    if (montantRecu <= 0) {
       return;
     }
-
-    const montantParDefaut =
-      Number(paiement.montant ?? 0).toFixed(2);
-
+    const montantParDefaut = montantRecu.toFixed(2);
     const montantSaisi = window.prompt(
       "Montant remboursé :",
       montantParDefaut
     );
-
     if (montantSaisi === null) {
       return;
     }
-
     const montantRembourse = Number(
       montantSaisi.replace(",", ".")
     );
-
     if (
       !Number.isFinite(montantRembourse) ||
       montantRembourse <= 0
@@ -474,31 +464,25 @@ function GestionInscriptions() {
       );
       return;
     }
-
     const note =
       window.prompt(
         "Note administrative facultative pour ce remboursement :",
         ""
       ) ?? "";
-
     const nomEnfant =
       `${inscription.enfants?.prenom ?? ""} ${
         inscription.enfants?.nom ?? ""
       }`.trim();
-
     const confirmation = window.confirm(
       `Confirmer un remboursement de ${formaterMontant(
         montantRembourse
       )} pour ${nomEnfant || "cette inscription"} ?`
     );
-
     if (!confirmation) {
       return;
     }
-
     setErreur("");
     setRemboursementEnCours(inscription.id);
-
     const { error: erreurRemboursement } =
       await supabase.rpc(
         "marquer_paiement_rembourse",
@@ -509,7 +493,6 @@ function GestionInscriptions() {
           p_note: note.trim() || null,
         }
       );
-
     if (erreurRemboursement) {
       console.error(erreurRemboursement);
       setErreur(
@@ -519,11 +502,9 @@ function GestionInscriptions() {
       setRemboursementEnCours(null);
       return;
     }
-
     setRemboursementEnCours(null);
     await chargerInscriptions();
   }
-
   async function confirmerPaiement() {
     if (!inscriptionPaiement) {
       return;
@@ -539,6 +520,10 @@ function GestionInscriptions() {
       {
         p_inscription_id:
           inscriptionPaiement.id,
+        p_numero_versement:
+          Number(
+            inscriptionPaiement.paiementAConfirmer?.numero_versement ?? 1
+          ),
         p_reference:
           reference.length > 0
             ? reference
@@ -710,10 +695,11 @@ function GestionInscriptions() {
                 <tbody>
                   {inscriptionsFiltrees.map(
                     (inscription) => {
-                      const paiement =
-                        obtenirPaiement(
-                          inscription
-                        );
+                      const paiements = obtenirPaiements(inscription);
+                      const paiementARecevoir =
+                        obtenirProchainPaiement(inscription);
+                      const montantRecu =
+                        obtenirMontantRecu(inscription);
                       return (
                         <tr
                           key={
@@ -764,40 +750,41 @@ function GestionInscriptions() {
                             )}
                           </td>
                           <td>
-                            {paiement ? (
+                            {paiements.length > 0 ? (
                               <div className="gestion-inscriptions-paiement">
-                                <span
-                                  className={`gestion-inscriptions-statut paiement-${paiement.statut}`}
-                                >
-                                  {
-                                    LIBELLES_PAIEMENT[
-                                      paiement
-                                        .statut
-                                    ] ??
-                                    paiement.statut
-                                  }
-                                </span>
-                                {paiement.reference && (
+                                {paiements.map((paiement) => (
+                                  <div
+                                    key={paiement.id}
+                                    className="gestion-inscriptions-paiement-ligne"
+                                  >
+                                    <span>
+                                      Versement {paiement.numero_versement ?? 1}/
+                                      {inscription.nombre_versements ?? paiements.length}
+                                    </span>
+                                    <span
+                                      className={`gestion-inscriptions-statut paiement-${paiement.statut}`}
+                                    >
+                                      {LIBELLES_PAIEMENT[paiement.statut] ??
+                                        paiement.statut}
+                                    </span>
+                                    <small>
+                                      {formaterMontant(paiement.montant)}
+                                      {paiement.reference
+                                        ? ` — ${paiement.reference}`
+                                        : ""}
+                                    </small>
+                                  </div>
+                                ))}
+                                {Number(inscription.montant_rembourse ?? 0) > 0 && (
                                   <small>
-                                    {
-                                      paiement.reference
-                                    }
+                                    Remboursé :{" "}
+                                    {formaterMontant(
+                                      inscription.montant_rembourse
+                                    )}
                                   </small>
                                 )}
-
-                                {paiement.statut ===
-                                  "rembourse" &&
-                                  paiement.montant_rembourse != null && (
-                                    <small>
-                                      Remboursé :{" "}
-                                      {formaterMontant(
-                                        paiement.montant_rembourse
-                                      )}
-                                    </small>
-                                  )}
                               </div>
-                            ) : inscription.statut ===
-                              "liste_attente" ? (
+                            ) : inscription.statut === "liste_attente" ? (
                               <span className="gestion-inscriptions-pas-paiement">
                                 Aucun paiement
                               </span>
@@ -813,23 +800,21 @@ function GestionInscriptions() {
                           </td>
                           <td>
                             <div className="gestion-inscriptions-actions">
-                              {inscription.statut ===
-                                "en_attente_paiement" &&
-                              paiement?.statut ===
-                                "a_recevoir" && (
+                              {inscription.statut !== "annulee" &&
+                              inscription.statut !== "liste_attente" &&
+                              paiementARecevoir && (
                                 <button
                                   type="button"
                                   className="admin-bouton admin-bouton-primaire"
                                   onClick={() =>
-                                    ouvrirConfirmationPaiement(
-                                      inscription
-                                    )
+                                    ouvrirConfirmationPaiement(inscription)
                                   }
                                 >
-                                  Confirmer le paiement
+                                  Confirmer versement{" "}
+                                  {paiementARecevoir.numero_versement ?? 1}/
+                                  {inscription.nombre_versements ?? paiements.length}
                                 </button>
                               )}
-
                               {inscription.statut ===
                                 "liste_attente" &&
                                 estPremiereEnAttenteDuGroupe(
@@ -868,7 +853,6 @@ function GestionInscriptions() {
                                       : "Groupe complet"}
                                   </button>
                                 )}
-
                               {inscription.statut !== "annulee" && (
                                 <button
                                   type="button"
@@ -887,11 +871,11 @@ function GestionInscriptions() {
                                     : "Annuler l'inscription"}
                                 </button>
                               )}
-
                               {inscription.statut ===
                                 "annulee" &&
-                                paiement?.statut ===
-                                  "recu" && (
+                              montantRecu > 0 &&
+                              Number(inscription.montant_rembourse ?? 0) <
+                                montantRecu && (
                                   <button
                                     type="button"
                                     className="admin-bouton admin-bouton-primaire"
@@ -911,11 +895,11 @@ function GestionInscriptions() {
                                       : "Marquer remboursé"}
                                   </button>
                                 )}
-
                               {inscription.statut ===
                                 "annulee" &&
-                                paiement?.statut !==
-                                  "recu" && (
+                              (montantRecu <= 0 ||
+                                Number(inscription.montant_rembourse ?? 0) >=
+                                  montantRecu) && (
                                   <span className="gestion-inscriptions-pas-action">
                                     —
                                   </span>
@@ -977,9 +961,11 @@ function GestionInscriptions() {
                 }
               </span>
               <strong>
+                Versement{" "}
+                {inscriptionPaiement.paiementAConfirmer?.numero_versement ?? 1}/
+                {inscriptionPaiement.nombre_versements ?? 1} —{" "}
                 {formaterMontant(
-                  inscriptionPaiement
-                    .prix_facture
+                  inscriptionPaiement.paiementAConfirmer?.montant
                 )}
               </strong>
             </div>

@@ -11,6 +11,7 @@ import GestionFinance from "./finance/GestionFinance";
 import GestionContrats from "./contrats/GestionContrats";
 import GestionAdministrateurs from "./administrateurs/GestionAdministrateurs";
 import GestionFamilles from "./pages/GestionFamilles";
+import GestionOrganisation from "./pages/GestionOrganisation";
 import "./AdministrationApp.css";
 
 const SECTIONS_ADMINISTRATION = [
@@ -68,6 +69,13 @@ const SECTIONS_ADMINISTRATION = [
     icone: "📄",
     titre: "Contrats",
     description: "Gérer les contrats, politiques et leurs versions.",
+  },
+  {
+  id: "organisation",
+  icone: "🏢",
+  titre: "Organisation",
+  description:
+    "Gérer les coordonnées, informations fiscales et renseignements utilisés sur les factures et reçus.",
   },
   {
     id: "administrateurs",
@@ -138,6 +146,10 @@ function AdministrationApp({ profil }) {
 
     if (sectionActive === "contrats") {
       return <GestionContrats />;
+    }
+
+    if (sectionActive === "organisation") {
+      return <GestionOrganisation />;
     }
 
     if (sectionActive === "administrateurs") {
