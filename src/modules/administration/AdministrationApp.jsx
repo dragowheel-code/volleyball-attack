@@ -1,7 +1,5 @@
 import { useState } from "react";
-
 import { supabase } from "../../lib/supabaseClient";
-
 import GestionSaisons from "./pages/GestionSaisons";
 import GestionGymnases from "./pages/GestionGymnases";
 import GestionCours from "./pages/GestionCours";
@@ -12,7 +10,6 @@ import GestionPresences from "./pages/GestionPresences";
 import GestionFinance from "./finance/GestionFinance";
 import GestionContrats from "./contrats/GestionContrats";
 import GestionAdministrateurs from "./administrateurs/GestionAdministrateurs";
-
 import "./AdministrationApp.css";
 
 const SECTIONS_ADMINISTRATION = [
@@ -20,99 +17,83 @@ const SECTIONS_ADMINISTRATION = [
     id: "saisons",
     icone: "📅",
     titre: "Saisons",
-    description:
-      "Créer et gérer les saisons d'inscription.",
+    description: "Créer et gérer les saisons d'inscription.",
   },
   {
     id: "gymnases",
     icone: "🏫",
     titre: "Gymnases",
-    description:
-      "Créer et gérer les lieux où se déroulent les activités.",
+    description: "Créer et gérer les lieux où se déroulent les activités.",
   },
   {
     id: "cours",
     icone: "🏐",
     titre: "Cours",
+    description: "Créer les cours, leurs groupes, capacités et horaires.",
+  },
+  {
+    id: "familles",
+    icone: "👨‍👩‍👧‍👦",
+    titre: "Familles",
     description:
-      "Créer les cours, leurs groupes, capacités et horaires.",
+      "Consulter les familles, les parents, les enfants, les inscriptions et gérer la conservation des données.",
   },
   {
     id: "entraineurs",
     icone: "👤",
     titre: "Entraîneurs",
-    description:
-      "Gérer les entraîneurs et leurs accès.",
+    description: "Gérer les entraîneurs et leurs accès.",
   },
   {
     id: "affectations-entraineurs",
     icone: "📋",
     titre: "Affectations",
-    description:
-      "Affecter les entraîneurs aux groupes de la saison.",
+    description: "Affecter les entraîneurs aux groupes de la saison.",
   },
   {
     id: "inscriptions",
     icone: "📝",
     titre: "Inscriptions",
-    description:
-      "Consulter et gérer les inscriptions.",
+    description: "Consulter et gérer les inscriptions.",
   },
   {
     id: "finance",
     icone: "💰",
     titre: "Finance",
-    description:
-      "Consulter les revenus, paiements et remboursements.",
+    description: "Consulter les revenus, paiements et remboursements.",
   },
   {
     id: "contrats",
     icone: "📄",
     titre: "Contrats",
+    description: "Gérer les contrats, politiques et leurs versions.",
+  },
+  {
+    id: "administrateurs",
+    icone: "🔐",
+    titre: "Administrateurs",
+    description: "Inviter, consulter et révoquer les accès administrateurs.",
+  },
+  {
+    id: "presences",
+    icone: "✅",
+    titre: "Présences",
     description:
-      "Gérer les contrats, politiques et leurs versions.",
+      "Consulter le cumulatif des présences, absences et retards des joueuses.",
   },
-  {
-  id: "administrateurs",
-  icone: "🔐",
-  titre: "Administrateurs",
-  description:
-    "Inviter, consulter et révoquer les accès administrateurs.",
-  },
-  {
-  id: "presences",
-  icone: "✅",
-  titre: "Présences",
-  description:
-    "Consulter le cumulatif des présences, absences et retards des joueuses.",
-},
 ];
 
 function AdministrationApp({ profil }) {
-  const [sectionActive, setSectionActive] =
-    useState(null);
-
-  const [
-    deconnexionEnCours,
-    setDeconnexionEnCours,
-  ] = useState(false);
+  const [sectionActive, setSectionActive] = useState(null);
+  const [deconnexionEnCours, setDeconnexionEnCours] = useState(false);
 
   async function seDeconnecter() {
     setDeconnexionEnCours(true);
-
-    const { error } =
-      await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
 
     if (error) {
-      console.error(
-        "Erreur lors de la déconnexion :",
-        error
-      );
-
-      alert(
-        `Impossible de vous déconnecter : ${error.message}`
-      );
-
+      console.error("Erreur lors de la déconnexion :", error);
+      alert(`Impossible de vous déconnecter : ${error.message}`);
       setDeconnexionEnCours(false);
     }
   }
@@ -138,13 +119,8 @@ function AdministrationApp({ profil }) {
       return <GestionEntraineurs />;
     }
 
-    if (
-      sectionActive ===
-      "affectations-entraineurs"
-    ) {
-      return (
-        <GestionAffectationsEntraineurs />
-      );
+    if (sectionActive === "affectations-entraineurs") {
+      return <GestionAffectationsEntraineurs />;
     }
 
     if (sectionActive === "inscriptions") {
@@ -163,19 +139,14 @@ function AdministrationApp({ profil }) {
       return <GestionAdministrateurs />;
     }
 
-    const section =
-      SECTIONS_ADMINISTRATION.find(
-        (element) =>
-          element.id === sectionActive
-      );
+    const section = SECTIONS_ADMINISTRATION.find(
+      (element) => element.id === sectionActive
+    );
 
     return (
       <section className="admin-section-page">
         <div className="admin-section-entete">
-          <div className="admin-section-icone">
-            {section?.icone}
-          </div>
-
+          <div className="admin-section-icone">{section?.icone}</div>
           <div>
             <h1>{section?.titre}</h1>
             <p>{section?.description}</p>
@@ -183,8 +154,7 @@ function AdministrationApp({ profil }) {
         </div>
 
         <div className="admin-section-vide">
-          Cette section sera construite
-          prochainement.
+          Cette section sera construite prochainement.
         </div>
       </section>
     );
@@ -198,9 +168,7 @@ function AdministrationApp({ profil }) {
             <button
               type="button"
               className="admin-bouton admin-bouton-secondaire"
-              onClick={() =>
-                setSectionActive(null)
-              }
+              onClick={() => setSectionActive(null)}
             >
               ← Administration
             </button>
@@ -211,9 +179,7 @@ function AdministrationApp({ profil }) {
               onClick={seDeconnecter}
               disabled={deconnexionEnCours}
             >
-              {deconnexionEnCours
-                ? "Déconnexion..."
-                : "Déconnexion"}
+              {deconnexionEnCours ? "Déconnexion..." : "Déconnexion"}
             </button>
           </div>
 
@@ -235,21 +201,17 @@ function AdministrationApp({ profil }) {
             <h1>Administration</h1>
 
             <p className="admin-description">
-              Gestion de la plateforme
-              d'inscription.
+              Gestion de la plateforme d'inscription.
             </p>
 
-            {profil &&
-              (profil.prenom ||
-                profil.nom) && (
-                <p className="admin-utilisateur">
-                  Bonjour{" "}
-                  <strong>
-                    {profil.prenom}{" "}
-                    {profil.nom}
-                  </strong>
-                </p>
-              )}
+            {profil && (profil.prenom || profil.nom) && (
+              <p className="admin-utilisateur">
+                Bonjour{" "}
+                <strong>
+                  {profil.prenom} {profil.nom}
+                </strong>
+              </p>
+            )}
           </div>
 
           <button
@@ -258,55 +220,35 @@ function AdministrationApp({ profil }) {
             onClick={seDeconnecter}
             disabled={deconnexionEnCours}
           >
-            {deconnexionEnCours
-              ? "Déconnexion..."
-              : "Déconnexion"}
+            {deconnexionEnCours ? "Déconnexion..." : "Déconnexion"}
           </button>
         </header>
 
         <section className="admin-tableau">
           <div className="admin-tableau-entete">
             <h2>Tableau de bord</h2>
-
-            <p>
-              Sélectionnez une section pour
-              commencer.
-            </p>
+            <p>Sélectionnez une section pour commencer.</p>
           </div>
 
           <div className="admin-grille">
-            {SECTIONS_ADMINISTRATION.map(
-              (section) => (
-                <article
-                  key={section.id}
-                  className="admin-carte"
+            {SECTIONS_ADMINISTRATION.map((section) => (
+              <article key={section.id} className="admin-carte">
+                <div className="admin-carte-icone">{section.icone}</div>
+
+                <div className="admin-carte-contenu">
+                  <h3>{section.titre}</h3>
+                  <p>{section.description}</p>
+                </div>
+
+                <button
+                  type="button"
+                  className="admin-bouton admin-bouton-principal"
+                  onClick={() => setSectionActive(section.id)}
                 >
-                  <div className="admin-carte-icone">
-                    {section.icone}
-                  </div>
-
-                  <div className="admin-carte-contenu">
-                    <h3>{section.titre}</h3>
-
-                    <p>
-                      {section.description}
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="admin-bouton admin-bouton-principal"
-                    onClick={() =>
-                      setSectionActive(
-                        section.id
-                      )
-                    }
-                  >
-                    Ouvrir
-                  </button>
-                </article>
-              )
-            )}
+                  Ouvrir
+                </button>
+              </article>
+            ))}
           </div>
         </section>
       </div>

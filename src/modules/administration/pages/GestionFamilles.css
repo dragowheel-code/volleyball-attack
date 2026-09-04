@@ -1,0 +1,196 @@
+.gestion-familles {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.familles-entete {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.familles-entete h1 {
+  margin: 0;
+}
+
+.familles-entete p {
+  margin: 0.4rem 0 0;
+}
+
+.familles-outils {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.familles-recherche,
+.familles-filtre {
+  padding: 0.7rem 0.8rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font: inherit;
+  background: white;
+}
+
+.familles-recherche {
+  flex: 1;
+  min-width: 240px;
+}
+
+.familles-filtre {
+  min-width: 210px;
+}
+
+.familles-resume {
+  font-size: 0.95rem;
+}
+
+.familles-erreur {
+  padding: 1rem;
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+}
+
+.familles-vide {
+  padding: 2rem;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.familles-table-conteneur {
+  overflow-x: auto;
+}
+
+.familles-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.familles-table th,
+.familles-table td {
+  padding: 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.familles-table th {
+  white-space: nowrap;
+}
+
+.familles-statut {
+  display: inline-block;
+  padding: 0.3rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.familles-statut-active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.familles-statut-purge {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 700px) {
+  .familles-entete {
+    flex-direction: column;
+  }
+
+  .familles-recherche,
+  .familles-filtre {
+    width: 100%;
+  }
+}
+.familles-dossier {
+  margin-top: 1rem;
+  padding: 1.25rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.familles-dossier-entete {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.familles-dossier-entete h2 {
+  margin: 0;
+}
+
+.familles-dossier-entete p {
+  margin: 0.4rem 0 0;
+}
+
+.familles-dossier-section {
+  margin-top: 1.5rem;
+}
+
+.familles-dossier-section h3 {
+  margin-bottom: 0.75rem;
+}
+
+.familles-dossier-carte {
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.familles-dossier-carte p {
+  margin: 0.35rem 0 0;
+}
+
+@media (max-width: 700px) {
+  .familles-dossier-entete {
+    flex-direction: column;
+  }
+}
+.familles-bouton-purge {
+  margin-top: 1rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: 8px;
+  background: #b91c1c;
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.familles-bouton-purge:hover:not(:disabled) {
+  background: #991b1b;
+}
+
+.familles-bouton-purge:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.familles-confirmation-purge {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid #dc2626;
+  border-radius: 8px;
+}
+
+.familles-confirmation-purge p {
+  margin: 0 0 0.75rem;
+}
+
+.familles-confirmation-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
