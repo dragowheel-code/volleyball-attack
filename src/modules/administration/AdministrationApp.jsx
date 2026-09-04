@@ -10,7 +10,7 @@ import GestionPresences from "./pages/GestionPresences";
 import GestionFinance from "./finance/GestionFinance";
 import GestionContrats from "./contrats/GestionContrats";
 import GestionAdministrateurs from "./administrateurs/GestionAdministrateurs";
-import GestionFamilles from "./familles/GestionFamilles";
+import GestionFamilles from "./pages/GestionFamilles";
 import "./AdministrationApp.css";
 
 const SECTIONS_ADMINISTRATION = [
