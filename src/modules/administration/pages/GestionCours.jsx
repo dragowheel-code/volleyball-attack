@@ -1,36 +1,17 @@
 import { useEffect, useState } from "react";
-
 import { supabase } from "../../../lib/supabaseClient";
-
 import ModalCours from "../../../components/ModalCours";
-
 import "./GestionCours.css";
 
 function GestionCours() {
   const [cours, setCours] = useState([]);
   const [saisons, setSaisons] = useState([]);
   const [gymnases, setGymnases] = useState([]);
-  const [
-    anneesScolaires,
-    setAnneesScolaires,
-  ] = useState([]);
-  const [
-    niveauxVolleyball,
-    setNiveauxVolleyball,
-  ] = useState([]);
-
-  const [chargement, setChargement] =
-    useState(true);
-
-  const [
-    afficherModal,
-    setAfficherModal,
-  ] = useState(false);
-
-  const [
-    coursEnModification,
-    setCoursEnModification,
-  ] = useState(null);
+  const [anneesScolaires, setAnneesScolaires] = useState([]);
+  const [niveauxVolleyball, setNiveauxVolleyball] = useState([]);
+  const [chargement, setChargement] = useState(true);
+  const [afficherModal, setAfficherModal] = useState(false);
+  const [coursEnModification, setCoursEnModification] = useState(null);
 
   // =========================================================
   // CHARGEMENT
@@ -49,6 +30,7 @@ function GestionCours() {
       resultatGymnases,
       resultatAnnees,
       resultatNiveaux,
+      resultatStatistiques,
     ] = await Promise.all([
       supabase
         .from("cours")
@@ -66,16 +48,12 @@ function GestionCours() {
           actif,
           date_creation
         `)
-        .order("date_creation", {
-          ascending: false,
-        }),
+        .order("date_creation", { ascending: false }),
 
       supabase
         .from("saisons")
         .select("*")
-        .order("date_debut", {
-          ascending: false,
-        }),
+        .order("date_debut", { ascending: false }),
 
       supabase
         .from("gymnases")
@@ -91,6 +69,8 @@ function GestionCours() {
         .from("niveaux_volleyball")
         .select("*")
         .order("ordre"),
+
+      supabase.rpc("lister_statistiques_cours_admin"),
     ]);
 
     if (resultatCours.error) {
@@ -113,16 +93,70 @@ function GestionCours() {
       console.error(resultatNiveaux.error);
     }
 
-    setCours(resultatCours.data ?? []);
-    setSaisons(resultatSaisons.data ?? []);
-    setGymnases(resultatGymnases.data ?? []);
-    setAnneesScolaires(
-      resultatAnnees.data ?? []
-    );
-    setNiveauxVolleyball(
-      resultatNiveaux.data ?? []
+    if (resultatStatistiques.error) {
+      console.error(resultatStatistiques.error);
+    }
+
+    const statistiquesParCours = new Map();
+
+    for (const statistique of resultatStatistiques.data ?? []) {
+      if (!statistiquesParCours.has(statistique.cours_id)) {
+        statistiquesParCours.set(statistique.cours_id, []);
+      }
+
+      if (statistique.groupe_id) {
+        statistiquesParCours
+          .get(statistique.cours_id)
+          .push({
+            groupe_id: statistique.groupe_id,
+            groupe_nom: statistique.groupe_nom,
+            capacite: Number(statistique.capacite ?? 0),
+            nombre_inscriptions: Number(
+              statistique.nombre_inscriptions ?? 0
+            ),
+            nombre_liste_attente: Number(
+              statistique.nombre_liste_attente ?? 0
+            ),
+          });
+      }
+    }
+
+    const coursAvecStatistiques = (resultatCours.data ?? []).map(
+      (element) => {
+        const groupes = statistiquesParCours.get(element.id) ?? [];
+
+        const capaciteTotale = groupes.reduce(
+          (total, groupe) => total + groupe.capacite,
+          0
+        );
+
+        const nombreInscriptions = groupes.reduce(
+          (total, groupe) =>
+            total + groupe.nombre_inscriptions,
+          0
+        );
+
+        const nombreListeAttente = groupes.reduce(
+          (total, groupe) =>
+            total + groupe.nombre_liste_attente,
+          0
+        );
+
+        return {
+          ...element,
+          statistiques_groupes: groupes,
+          capacite_totale: capaciteTotale,
+          nombre_inscriptions: nombreInscriptions,
+          nombre_liste_attente: nombreListeAttente,
+        };
+      }
     );
 
+    setCours(coursAvecStatistiques);
+    setSaisons(resultatSaisons.data ?? []);
+    setGymnases(resultatGymnases.data ?? []);
+    setAnneesScolaires(resultatAnnees.data ?? []);
+    setNiveauxVolleyball(resultatNiveaux.data ?? []);
     setChargement(false);
   }
 
@@ -151,18 +185,12 @@ function GestionCours() {
           annee_scolaire_id,
           type
         `)
-        .eq(
-          "cours_id",
-          coursSelectionne.id
-        ),
+        .eq("cours_id", coursSelectionne.id),
 
       supabase
         .from("cours_niveaux_volleyball")
         .select("niveau_id")
-        .eq(
-          "cours_id",
-          coursSelectionne.id
-        ),
+        .eq("cours_id", coursSelectionne.id),
 
       supabase
         .from("groupes")
@@ -181,10 +209,7 @@ function GestionCours() {
             ordre
           )
         `)
-        .eq(
-          "cours_id",
-          coursSelectionne.id
-        )
+        .eq("cours_id", coursSelectionne.id)
         .eq("actif", true)
         .order("ordre"),
     ]);
@@ -200,58 +225,37 @@ function GestionCours() {
           resultatGroupes.error
       );
 
-      alert(
-        "Impossible de charger le cours."
-      );
-
+      alert("Impossible de charger le cours.");
       return;
     }
 
-    const groupes = (
-      resultatGroupes.data ?? []
-    ).map((groupe) => ({
-      ...groupe,
-
-      horaires: (
-        groupe.horaires_groupes ?? []
-      )
-        .sort(
-          (a, b) =>
-            (a.ordre ?? 0) -
-            (b.ordre ?? 0)
-        )
-        .map((horaire) => ({
-          id: horaire.id,
-          jour_semaine:
-            horaire.jour_semaine,
-          heure_debut:
-            horaire.heure_debut?.slice(
-              0,
-              5
-            ) ?? "",
-          heure_fin:
-            horaire.heure_fin?.slice(
-              0,
-              5
-            ) ?? "",
-          gymnase_id:
-            horaire.gymnase_id ?? "",
-          ordre: horaire.ordre,
-        })),
-    }));
+    const groupes = (resultatGroupes.data ?? []).map(
+      (groupe) => ({
+        ...groupe,
+        horaires: (groupe.horaires_groupes ?? [])
+          .sort(
+            (a, b) =>
+              (a.ordre ?? 0) - (b.ordre ?? 0)
+          )
+          .map((horaire) => ({
+            id: horaire.id,
+            jour_semaine: horaire.jour_semaine,
+            heure_debut:
+              horaire.heure_debut?.slice(0, 5) ?? "",
+            heure_fin:
+              horaire.heure_fin?.slice(0, 5) ?? "",
+            gymnase_id: horaire.gymnase_id ?? "",
+            ordre: horaire.ordre,
+          })),
+      })
+    );
 
     setCoursEnModification({
       ...coursSelectionne,
-
-      annees_scolaires:
-        resultatAnnees.data ?? [],
-
+      annees_scolaires: resultatAnnees.data ?? [],
       niveaux_volleyball: (
         resultatNiveaux.data ?? []
-      ).map(
-        (element) => element.niveau_id
-      ),
-
+      ).map((element) => element.niveau_id),
       groupes,
     });
 
@@ -265,7 +269,6 @@ function GestionCours() {
   async function gererEnregistrement() {
     setAfficherModal(false);
     setCoursEnModification(null);
-
     await chargerDonnees();
   }
 
@@ -276,8 +279,7 @@ function GestionCours() {
   function obtenirNomSaison(saisonId) {
     return (
       saisons.find(
-        (saison) =>
-          saison.id === saisonId
+        (saison) => saison.id === saisonId
       )?.nom ?? "Saison inconnue"
     );
   }
@@ -291,10 +293,9 @@ function GestionCours() {
       <div className="gestion-cours-entete">
         <div>
           <h1>Cours</h1>
-
           <p>
-            Gérez les activités offertes,
-            leurs groupes et leurs horaires.
+            Gérez les activités offertes, leurs groupes et leurs
+            horaires.
           </p>
         </div>
 
@@ -314,10 +315,8 @@ function GestionCours() {
       ) : cours.length === 0 ? (
         <div className="gestion-cours-vide">
           <h2>Aucun cours</h2>
-
           <p>
-            Créez votre premier cours pour
-            commencer.
+            Créez votre premier cours pour commencer.
           </p>
         </div>
       ) : (
@@ -343,16 +342,13 @@ function GestionCours() {
                     </span>
 
                     <span className="gestion-cours-badge">
-                      {element
-                        .inscriptions_ouvertes
+                      {element.inscriptions_ouvertes
                         ? "Inscriptions ouvertes"
                         : "Inscriptions fermées"}
                     </span>
                   </div>
 
-                  <h2>
-                    {element.nom}
-                  </h2>
+                  <h2>{element.nom}</h2>
 
                   <p className="gestion-cours-saison">
                     {obtenirNomSaison(
@@ -368,11 +364,55 @@ function GestionCours() {
                 </div>
 
                 <div className="gestion-cours-prix">
-                  {Number(
-                    element.prix
-                  ).toFixed(2)}{" "}
-                  $
+                  {Number(element.prix).toFixed(2)} $
                 </div>
+              </div>
+
+              <div className="gestion-cours-statistiques">
+                <div className="gestion-cours-statistiques-total">
+                  <span>
+                    Inscriptions :{" "}
+                    <strong>
+                      {element.nombre_inscriptions} /{" "}
+                      {element.capacite_totale}
+                    </strong>
+                  </span>
+
+                  {element.nombre_liste_attente > 0 && (
+                    <span>
+                      Liste d&apos;attente :{" "}
+                      <strong>
+                        {element.nombre_liste_attente}
+                      </strong>
+                    </span>
+                  )}
+                </div>
+
+                {element.statistiques_groupes.map(
+                  (groupe) => (
+                    <div
+                      key={groupe.groupe_id}
+                      className="gestion-cours-statistique-groupe"
+                    >
+                      <span>
+                        {groupe.groupe_nom} :{" "}
+                        <strong>
+                          {groupe.nombre_inscriptions} /{" "}
+                          {groupe.capacite}
+                        </strong>
+                      </span>
+
+                      {groupe.nombre_liste_attente > 0 && (
+                        <span>
+                          Liste d&apos;attente :{" "}
+                          <strong>
+                            {groupe.nombre_liste_attente}
+                          </strong>
+                        </span>
+                      )}
+                    </div>
+                  )
+                )}
               </div>
 
               <div className="gestion-cours-pied">
@@ -380,8 +420,7 @@ function GestionCours() {
                   <span>
                     Accès :{" "}
                     <strong>
-                      {element.type_acces ===
-                      "code"
+                      {element.type_acces === "code"
                         ? "Par code"
                         : "Public"}
                     </strong>
@@ -392,9 +431,7 @@ function GestionCours() {
                   type="button"
                   className="admin-bouton admin-bouton-secondaire"
                   onClick={() =>
-                    ouvrirModification(
-                      element
-                    )
+                    ouvrirModification(element)
                   }
                 >
                   Modifier
@@ -407,24 +444,16 @@ function GestionCours() {
 
       {afficherModal && (
         <ModalCours
-          cours={
-            coursEnModification
-          }
+          cours={coursEnModification}
           saisons={saisons}
           gymnases={gymnases}
-          anneesScolaires={
-            anneesScolaires
-          }
-          niveauxVolleyball={
-            niveauxVolleyball
-          }
+          anneesScolaires={anneesScolaires}
+          niveauxVolleyball={niveauxVolleyball}
           onFermer={() => {
             setAfficherModal(false);
             setCoursEnModification(null);
           }}
-          onEnregistre={
-            gererEnregistrement
-          }
+          onEnregistre={gererEnregistrement}
         />
       )}
     </section>
