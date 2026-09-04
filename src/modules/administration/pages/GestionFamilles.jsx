@@ -238,10 +238,10 @@ async function purgerFamille() {
               </tr>
             </thead>
             <tbody>
-              {famillesFiltrees.map((famille, index) => (
+              {famillesFiltrees.map((famille) => (
                 <tr key={famille.famille_id}>
                   <td>
-                    <strong>Famille {index + 1}</strong>
+                    <strong>Famille {famille.nom_famille}</strong>
                   </td>
                   <td>{famille.nombre_parents}</td>
                   <td>{famille.nombre_enfants}</td>
