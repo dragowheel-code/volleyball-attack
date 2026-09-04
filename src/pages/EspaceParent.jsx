@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 // Supabase
 import { supabase } from "../lib/supabaseClient";
 // Modals
@@ -84,31 +84,110 @@ function EspaceParent({ profil }) {
   const [inscriptions, setInscriptions] = useState([]);
   const [chargementInscriptions, setChargementInscriptions] = useState(true);
   const [erreurInscriptions, setErreurInscriptions] = useState("");
-  // =========================================================
-  // CHARGEMENT INITIAL
-  // =========================================================
-  useEffect(() => {
-    chargerEnfants();
-    chargerParentsFamille();
-    chargerContactsUrgence();
-    chargerInscriptions();
-  }, []);
+  const [documentsFinanciers, setDocumentsFinanciers] = useState({});
+  const [documentEnCoursId, setDocumentEnCoursId] = useState(null);
+  const [historiqueDocuments, setHistoriqueDocuments] = useState([]);
+  const [chargementHistoriqueDocuments, setChargementHistoriqueDocuments] =
+    useState(true);
+  const [erreurHistoriqueDocuments, setErreurHistoriqueDocuments] = useState("");
   // =========================================================
   // CHARGEMENT DES INSCRIPTIONS
   // =========================================================
-  async function chargerInscriptions() {
+  const chargerDocumentsFinanciers = useCallback(async (listeInscriptions) => {
+    const inscriptionsAvecPaiement = listeInscriptions.filter(
+      (inscription) =>
+        inscription.inscription_id &&
+        Array.isArray(inscription.paiements) &&
+        inscription.paiements.length > 0
+    );
+    if (inscriptionsAvecPaiement.length === 0) {
+      setDocumentsFinanciers({});
+      return;
+    }
+    const resultats = await Promise.all(
+      inscriptionsAvecPaiement.map(async (inscription) => {
+        const { data, error } = await supabase.rpc(
+          "lister_documents_financiers_inscription",
+          { p_inscription_id: inscription.inscription_id }
+        );
+        if (error) {
+          console.error(
+            `Erreur lors du chargement des documents de l'inscription ${inscription.inscription_id} :`,
+            error
+          );
+          return [inscription.inscription_id, []];
+        }
+        return [inscription.inscription_id, data || []];
+      })
+    );
+    setDocumentsFinanciers(Object.fromEntries(resultats));
+
+  }, []);
+
+  const chargerInscriptions = useCallback(async () => {
     setChargementInscriptions(true);
     setErreurInscriptions("");
     const { data, error } = await supabase.rpc("lister_mes_inscriptions_parent");
     if (error) {
       console.error("Erreur lors du chargement des inscriptions :", error);
       setInscriptions([]);
+      setDocumentsFinanciers({});
       setErreurInscriptions("Impossible de charger vos inscriptions.");
       setChargementInscriptions(false);
       return;
     }
-    setInscriptions(data || []);
+    const listeInscriptions = data || [];
+    setInscriptions(listeInscriptions);
+    await chargerDocumentsFinanciers(listeInscriptions);
     setChargementInscriptions(false);
+
+  }, [chargerDocumentsFinanciers]);
+
+  const chargerHistoriqueDocuments = useCallback(async () => {
+    setChargementHistoriqueDocuments(true);
+    setErreurHistoriqueDocuments("");
+    const { data, error } = await supabase.rpc(
+      "lister_mes_documents_financiers_parent"
+    );
+    if (error) {
+      console.error("Erreur lors du chargement des documents financiers :", error);
+      setHistoriqueDocuments([]);
+      setErreurHistoriqueDocuments(
+        "Impossible de charger vos documents financiers."
+      );
+      setChargementHistoriqueDocuments(false);
+      return;
+    }
+    setHistoriqueDocuments(data || []);
+    setChargementHistoriqueDocuments(false);
+  }, []);
+
+  async function ouvrirDocumentFinancier(document) {
+    if (!document?.document_id || documentEnCoursId) return;
+    const nouvelleFenetre = window.open("", "_blank");
+    setDocumentEnCoursId(document.document_id);
+    setErreurInscriptions("");
+    try {
+      const { data, error } = await supabase.functions.invoke(
+        "generer-document-financier",
+        { body: { document_id: document.document_id } }
+      );
+      if (error) throw error;
+      if (!data?.url) throw new Error("Lien du document introuvable.");
+      if (nouvelleFenetre) {
+        nouvelleFenetre.location.replace(data.url);
+      } else {
+        window.open(data.url, "_blank", "noopener,noreferrer");
+      }
+    } catch (error) {
+      nouvelleFenetre?.close();
+      console.error("Erreur lors de l'ouverture du document financier :", error);
+      setErreurInscriptions(
+        error.message || "Impossible d'ouvrir le document financier."
+      );
+    } finally {
+      setDocumentEnCoursId(null);
+    }
   }
   function formaterMontant(valeur) {
     return new Intl.NumberFormat("fr-CA", {
@@ -144,7 +223,7 @@ function EspaceParent({ profil }) {
   // =========================================================
   // CHARGEMENT DES ENFANTS
   // =========================================================
-  async function chargerEnfants() {
+  const chargerEnfants = useCallback(async () => {
     setChargementEnfants(true);
     const { data, error } = await supabase
       .from("parents_enfants")
@@ -179,11 +258,12 @@ function EspaceParent({ profil }) {
       .filter((enfant) => enfant?.id);
     setEnfants(liste);
     setChargementEnfants(false);
-  }
+
+  }, []);
   // =========================================================
   // CHARGEMENT DES PARENTS
   // =========================================================
-  async function chargerParentsFamille() {
+  const chargerParentsFamille = useCallback(async () => {
     setChargementParents(true);
     const { data, error } = await supabase.rpc(
       "lister_parents_famille"
@@ -199,11 +279,12 @@ function EspaceParent({ profil }) {
     }
     setParentsFamille(data || []);
     setChargementParents(false);
-  }
+
+  }, []);
   // =========================================================
   // CHARGEMENT DES CONTACTS D'URGENCE
   // =========================================================
-  async function chargerContactsUrgence() {
+  const chargerContactsUrgence = useCallback(async () => {
     setChargementContacts(true);
     const { data, error } = await supabase.rpc(
       "lister_contacts_urgence_famille"
@@ -219,7 +300,37 @@ function EspaceParent({ profil }) {
     }
     setContactsUrgence(data || []);
     setChargementContacts(false);
-  }
+
+  }, []);
+
+  // =========================================================
+  // CHARGEMENT INITIAL
+  // =========================================================
+  useEffect(() => {
+    let annule = false;
+
+    queueMicrotask(() => {
+      if (annule) return;
+      void Promise.all([
+        chargerEnfants(),
+        chargerParentsFamille(),
+        chargerContactsUrgence(),
+        chargerInscriptions(),
+        chargerHistoriqueDocuments(),
+      ]);
+    });
+
+    return () => {
+      annule = true;
+    };
+  }, [
+    chargerEnfants,
+    chargerParentsFamille,
+    chargerContactsUrgence,
+    chargerInscriptions,
+    chargerHistoriqueDocuments,
+  ]);
+
   // =========================================================
   // GESTION DES CONTACTS D'URGENCE
   // =========================================================
@@ -1033,6 +1144,27 @@ async function enregistrerProfilParent(
                               : ""}
                           </p>
                         )}
+                        {(documentsFinanciers[inscription.inscription_id] || []).length > 0 && (
+                          <div className="actions-fiche espace-parent-documents">
+                            {(documentsFinanciers[inscription.inscription_id] || []).map(
+                              (document) => (
+                                <button
+                                  key={document.document_id}
+                                  type="button"
+                                  className="bouton bouton-secondaire"
+                                  onClick={() => ouvrirDocumentFinancier(document)}
+                                  disabled={documentEnCoursId === document.document_id}
+                                >
+                                  {documentEnCoursId === document.document_id
+                                    ? "Ouverture..."
+                                    : document.type_document === "facture"
+                                    ? `Facture ${document.numero_document}`
+                                    : `Reçu ${document.numero_document}`}
+                                </button>
+                              )
+                            )}
+                          </div>
+                        )}
                       </div>
                     </article>
                   );
@@ -1040,6 +1172,63 @@ async function enregistrerProfilParent(
               </div>
             )}
           </article>
+          {/* MES DOCUMENTS FINANCIERS */}
+          <article className="carte-espace-parent">
+            <div className="entete-carte-parent">
+              <h2>Mes documents financiers</h2>
+            </div>
+            {chargementHistoriqueDocuments ? (
+              <p className="etat-vide">Chargement...</p>
+            ) : erreurHistoriqueDocuments ? (
+              <p className="etat-vide">{erreurHistoriqueDocuments}</p>
+            ) : historiqueDocuments.length === 0 ? (
+              <p className="etat-vide">
+                Aucune facture ni aucun reçu disponible.
+              </p>
+            ) : (
+              <div className="liste-enfants">
+                {historiqueDocuments.map((document) => (
+                  <article key={document.document_id} className="fiche-enfant">
+                    <div>
+                      <h3>
+                        {document.type_document === "facture"
+                          ? "Facture"
+                          : "Reçu"}{" "}
+                        {document.numero_document}
+                      </h3>
+                      <p>
+                        <strong>
+                          {document.enfant_prenom} {document.enfant_nom}
+                        </strong>
+                      </p>
+                      <p>
+                        {document.saison_nom} — {document.cours_nom}
+                        {document.groupe_nom ? ` — ${document.groupe_nom}` : ""}
+                      </p>
+                      <p>
+                        Émis le {formaterDatePaiement(document.date_emission)}
+                        {" — "}
+                        <strong>{formaterMontant(document.montant_total)}</strong>
+                      </p>
+                    </div>
+                    <div className="actions-fiche">
+                      <button
+                        type="button"
+                        className="bouton bouton-secondaire"
+                        onClick={() => ouvrirDocumentFinancier(document)}
+                        disabled={documentEnCoursId === document.document_id}
+                      >
+                        {documentEnCoursId === document.document_id
+                          ? "Ouverture..."
+                          : "Ouvrir le PDF"}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </article>
+
           {/* MON PROFIL */}
           <article className="carte-espace-parent">
             <h2>Mon profil</h2>
