@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-// Supabase
+// Supabase //
 import { supabase } from "../lib/supabaseClient";
-// Modals
+// Modals //
 import ModalAjoutEnfant from "../components/parent/ModalAjoutEnfant";
 import ModalAjoutParent from "../components/parent/ModalAjoutParent";
 import ModalContactUrgence from "../components/parent/ModalContactUrgence";
@@ -9,9 +9,9 @@ import ModalEnfant from "../components/parent/ModalEnfant";
 import ModalProfilParent from "../components/parent/ModalProfilParent";
 import ActivitesDisponibles from "../components/parent/ActivitesDisponibles";
 function EspaceParent({ profil }) {
-  // =========================================================
-  // ENFANTS
-  // =========================================================
+  // ========================================================= //
+  // ENFANTS //
+  // ========================================================= //
   const [enfants, setEnfants] = useState([]);
   const [chargementEnfants, setChargementEnfants] =
     useState(true);
@@ -34,9 +34,9 @@ function EspaceParent({ profil }) {
     setMessageModificationEnfant,
   ] = useState("");
   const [afficherActivites, setAfficherActivites] = useState(false);
-  // =========================================================
-  // PARENTS / RESPONSABLES
-  // =========================================================
+  // ========================================================= //
+  // PARENTS / RESPONSABLES //
+  // ========================================================= //
   const [parentsFamille, setParentsFamille] =
     useState([]);
   const [chargementParents, setChargementParents] =
@@ -53,9 +53,9 @@ function EspaceParent({ profil }) {
     messageInvitation,
     setMessageInvitation,
   ] = useState("");
-  // =========================================================
-  // CONTACTS D'URGENCE
-  // =========================================================
+  // ========================================================= //
+  // CONTACTS D'URGENCE //
+  // ========================================================= //
   const [contactsUrgence, setContactsUrgence] =
     useState([]);
   const [
@@ -78,9 +78,9 @@ function EspaceParent({ profil }) {
     contactEnModification,
     setContactEnModification,
   ] = useState(null);
-  // =========================================================
-  // INSCRIPTIONS
-  // =========================================================
+  // ========================================================= //
+  // INSCRIPTIONS //
+  // =========================================================//   
   const [inscriptions, setInscriptions] = useState([]);
   const [chargementInscriptions, setChargementInscriptions] = useState(true);
   const [erreurInscriptions, setErreurInscriptions] = useState("");
@@ -90,9 +90,9 @@ function EspaceParent({ profil }) {
   const [chargementHistoriqueDocuments, setChargementHistoriqueDocuments] =
     useState(true);
   const [erreurHistoriqueDocuments, setErreurHistoriqueDocuments] = useState("");
-  // =========================================================
-  // CHARGEMENT DES INSCRIPTIONS
-  // =========================================================
+  // ========================================================= //
+  // CHARGEMENT DES INSCRIPTIONS //
+  // ========================================================= //
   const chargerDocumentsFinanciers = useCallback(async (listeInscriptions) => {
     const inscriptionsAvecPaiement = listeInscriptions.filter(
       (inscription) =>
@@ -121,9 +121,7 @@ function EspaceParent({ profil }) {
       })
     );
     setDocumentsFinanciers(Object.fromEntries(resultats));
-
   }, []);
-
   const chargerInscriptions = useCallback(async () => {
     setChargementInscriptions(true);
     setErreurInscriptions("");
@@ -140,9 +138,7 @@ function EspaceParent({ profil }) {
     setInscriptions(listeInscriptions);
     await chargerDocumentsFinanciers(listeInscriptions);
     setChargementInscriptions(false);
-
   }, [chargerDocumentsFinanciers]);
-
   const chargerHistoriqueDocuments = useCallback(async () => {
     setChargementHistoriqueDocuments(true);
     setErreurHistoriqueDocuments("");
@@ -161,7 +157,6 @@ function EspaceParent({ profil }) {
     setHistoriqueDocuments(data || []);
     setChargementHistoriqueDocuments(false);
   }, []);
-
   async function ouvrirDocumentFinancier(document) {
     if (!document?.document_id || documentEnCoursId) return;
     const nouvelleFenetre = window.open("", "_blank");
@@ -220,9 +215,9 @@ function EspaceParent({ profil }) {
     };
     return libelles[statut] ?? statut ?? "—";
   }
-  // =========================================================
-  // CHARGEMENT DES ENFANTS
-  // =========================================================
+  // ========================================================= //
+  // CHARGEMENT DES ENFANTS //
+  // ========================================================= //
   const chargerEnfants = useCallback(async () => {
     setChargementEnfants(true);
     const { data, error } = await supabase
@@ -258,11 +253,10 @@ function EspaceParent({ profil }) {
       .filter((enfant) => enfant?.id);
     setEnfants(liste);
     setChargementEnfants(false);
-
   }, []);
-  // =========================================================
-  // CHARGEMENT DES PARENTS
-  // =========================================================
+  // ========================================================= //
+  // CHARGEMENT DES PARENTS //
+  // ========================================================= //
   const chargerParentsFamille = useCallback(async () => {
     setChargementParents(true);
     const { data, error } = await supabase.rpc(
@@ -279,11 +273,10 @@ function EspaceParent({ profil }) {
     }
     setParentsFamille(data || []);
     setChargementParents(false);
-
   }, []);
-  // =========================================================
-  // CHARGEMENT DES CONTACTS D'URGENCE
-  // =========================================================
+  // ========================================================= //
+  // CHARGEMENT DES CONTACTS D'URGENCE //
+  // ========================================================= //
   const chargerContactsUrgence = useCallback(async () => {
     setChargementContacts(true);
     const { data, error } = await supabase.rpc(
@@ -300,15 +293,12 @@ function EspaceParent({ profil }) {
     }
     setContactsUrgence(data || []);
     setChargementContacts(false);
-
   }, []);
-
-  // =========================================================
-  // CHARGEMENT INITIAL
-  // =========================================================
+  // ========================================================= //
+  // CHARGEMENT INITIAL //
+  // ========================================================= //
   useEffect(() => {
     let annule = false;
-
     queueMicrotask(() => {
       if (annule) return;
       void Promise.all([
@@ -319,7 +309,6 @@ function EspaceParent({ profil }) {
         chargerHistoriqueDocuments(),
       ]);
     });
-
     return () => {
       annule = true;
     };
@@ -330,10 +319,9 @@ function EspaceParent({ profil }) {
     chargerInscriptions,
     chargerHistoriqueDocuments,
   ]);
-
-  // =========================================================
-  // GESTION DES CONTACTS D'URGENCE
-  // =========================================================
+  // ========================================================= //
+  // GESTION DES CONTACTS D'URGENCE //
+  // ========================================================= //
   function ouvrirAjoutContact() {
     setContactEnModification(null);
     setMessageAjoutContact("");
@@ -461,17 +449,17 @@ function EspaceParent({ profil }) {
     }
     await chargerContactsUrgence();
   }
-  // =========================================================
-// MON PROFIL
-// =========================================================
-const [profilParentComplet, setProfilParentComplet] =
-  useState(null);
-const [afficherProfilParent, setAfficherProfilParent] =
-  useState(false);
-const [
-  chargementProfilParent,
-  setChargementProfilParent,
-] = useState(false);
+  // ========================================================= //
+  // MON PROFIL //
+  // ========================================================= //
+  const [profilParentComplet, setProfilParentComplet] =
+    useState(null);
+  const [afficherProfilParent, setAfficherProfilParent] =
+    useState(false);
+  const [
+    chargementProfilParent,
+    setChargementProfilParent,
+  ] = useState(false);
 const [
   modificationProfilEnCours,
   setModificationProfilEnCours,
@@ -482,9 +470,9 @@ const [
 ] = useState("");
 const [courrielParent, setCourrielParent] =
   useState("");
-  // =========================================================
-  // DÉCONNEXION
-  // =========================================================
+  // ========================================================= //
+  // DÉCONNEXION //
+  // ========================================================= //
   async function seDeconnecter() {
     const { error } =
       await supabase.auth.signOut();
@@ -495,9 +483,9 @@ const [courrielParent, setCourrielParent] =
       );
     }
   }
-  // =========================================================
-  // AJOUT D'UN ENFANT
-  // =========================================================
+  // ========================================================= //
+  // AJOUT D'UN ENFANT //
+  // ========================================================= //
   function ouvrirAjoutEnfant() {
     setMessageAjout("");
     setAfficherAjoutEnfant(true);
@@ -572,9 +560,9 @@ const [courrielParent, setCourrielParent] =
     setAfficherAjoutEnfant(false);
     setMessageAjout("");
   }
-  // =========================================================
-  // MODIFICATION D'UN ENFANT
-  // =========================================================
+  // ========================================================= //
+  // MODIFICATION D'UN ENFANT //
+  // ========================================================= //
   function ouvrirEnfant(enfant) {
     setEnfantEnModification(enfant);
     setMessageModificationEnfant("");
@@ -649,9 +637,9 @@ const [courrielParent, setCourrielParent] =
     setEnfantEnModification(null);
     setMessageModificationEnfant("");
   }
-  // =========================================================
-  // INVITATION DU DEUXIÈME PARENT
-  // =========================================================
+  // ========================================================= //
+  // INVITATION DU DEUXIÈME PARENT //
+  // ========================================================= //
   function ouvrirAjoutParent() {
     setMessageInvitation("");
     setAfficherAjoutParent(true);
@@ -688,7 +676,7 @@ const [courrielParent, setCourrielParent] =
           const corpsErreur = await error.context.json();
           if (corpsErreur?.message) message = corpsErreur.message;
         } catch {
-          // La réponse ne contenait pas de JSON exploitable.
+          // La réponse ne contenait pas de JSON exploitable. //
         }
       }
       setMessageInvitation(message);
@@ -711,9 +699,9 @@ const [courrielParent, setCourrielParent] =
       alert(data.message || "Le deuxième parent a été ajouté.");
     }
   }
-  // =========================================================
-// PROFIL PARENT
-// =========================================================
+  // ========================================================= //
+  // PROFIL PARENT //
+  // ========================================================= //
 async function ouvrirProfilParent() {
   setMessageModificationProfil("");
   setChargementProfilParent(true);
@@ -800,13 +788,13 @@ async function enregistrerProfilParent(
   setAfficherProfilParent(false);
   setProfilParentComplet(null);
   setMessageModificationProfil("");
-  // Recharge la page afin que le prénom
-  // affiché dans l'entête soit également actualisé.
+  // Recharge la page afin que le prénom //
+  // affiché dans l'entête soit également actualisé. //
   window.location.reload();
 }
-  // =========================================================
-  // ACTIVITÉS DISPONIBLES
-  // =========================================================
+  // ========================================================= //
+  // ACTIVITÉS DISPONIBLES //
+  // ========================================================= //
   if (afficherActivites) {
     return (
       <main className="page-espace-parent">
@@ -818,9 +806,9 @@ async function enregistrerProfilParent(
       </main>
     );
   }
-  // =========================================================
-  // AFFICHAGE
-  // =========================================================
+  // ========================================================= //
+  // AFFICHAGE //
+  // ========================================================= //
   return (
     <main className="page-espace-parent">
       <div className="espace-parent-conteneur">
@@ -1175,7 +1163,13 @@ async function enregistrerProfilParent(
           {/* MES DOCUMENTS FINANCIERS */}
           <article className="carte-espace-parent">
             <div className="entete-carte-parent">
-              <h2>Mes documents financiers</h2>
+              <div>
+                <h2>Factures et reçus</h2>
+                <p>
+                  Retrouvez ici vos factures et vos reçus de paiement,
+                  incluant ceux des saisons précédentes.
+                </p>
+              </div>
             </div>
             {chargementHistoriqueDocuments ? (
               <p className="etat-vide">Chargement...</p>
@@ -1183,7 +1177,8 @@ async function enregistrerProfilParent(
               <p className="etat-vide">{erreurHistoriqueDocuments}</p>
             ) : historiqueDocuments.length === 0 ? (
               <p className="etat-vide">
-                Aucune facture ni aucun reçu disponible.
+                Aucun document disponible pour le moment. Vos factures et
+                reçus apparaîtront automatiquement ici lorsqu'ils seront émis.
               </p>
             ) : (
               <div className="liste-enfants">
@@ -1228,7 +1223,6 @@ async function enregistrerProfilParent(
               </div>
             )}
           </article>
-
           {/* MON PROFIL */}
           <article className="carte-espace-parent">
             <h2>Mon profil</h2>

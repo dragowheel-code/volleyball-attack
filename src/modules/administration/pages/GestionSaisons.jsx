@@ -1,26 +1,21 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
-
 function GestionSaisons() {
   const [saisons, setSaisons] = useState([]);
   const [chargement, setChargement] =
     useState(true);
-
   const [
     afficherFormulaire,
     setAfficherFormulaire,
   ] = useState(false);
-
   const [
     saisonEnModification,
     setSaisonEnModification,
   ] = useState(null);
-
   const [
     operationEnCours,
     setOperationEnCours,
   ] = useState(false);
-
   const [formulaire, setFormulaire] =
     useState({
       nom: "",
@@ -29,14 +24,11 @@ function GestionSaisons() {
       inscriptionsDebut: "",
       inscriptionsFin: "",
     });
-
   useEffect(() => {
     chargerSaisons();
   }, []);
-
   async function chargerSaisons() {
     setChargement(true);
-
     const { data, error } =
       await supabase
         .from("saisons")
@@ -44,35 +36,48 @@ function GestionSaisons() {
         .order("date_debut", {
           ascending: false,
         });
-
     if (error) {
       console.error(
         "Erreur lors du chargement des saisons :",
         error
       );
-
       setSaisons([]);
       setChargement(false);
-
       return;
     }
-
     setSaisons(data || []);
     setChargement(false);
+  }
+  function versDateHeureLocale(valeur) {
+    if (!valeur) return "";
+    const date = new Date(valeur);
+    if (Number.isNaN(date.getTime())) return "";
+    const decalage = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - decalage).toISOString().slice(0, 16);
+  }
+
+  function afficherDateHeure(valeur) {
+    if (!valeur) return "—";
+    const date = new Date(valeur);
+    if (Number.isNaN(date.getTime())) return valeur;
+    return date.toLocaleString("fr-CA", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   function modifierChamp(e) {
     const { name, value } = e.target;
-
     setFormulaire((ancien) => ({
       ...ancien,
       [name]: value,
     }));
   }
-
   function ouvrirFormulaire() {
     setSaisonEnModification(null);
-
     setFormulaire({
       nom: "",
       dateDebut: "",
@@ -80,13 +85,10 @@ function GestionSaisons() {
       inscriptionsDebut: "",
       inscriptionsFin: "",
     });
-
     setAfficherFormulaire(true);
   }
-
   function ouvrirModification(saison) {
     setSaisonEnModification(saison);
-
     setFormulaire({
       nom: saison.nom || "",
       dateDebut:
@@ -94,28 +96,22 @@ function GestionSaisons() {
       dateFin:
         saison.date_fin || "",
       inscriptionsDebut:
-        saison.inscriptions_debut || "",
+        versDateHeureLocale(saison.inscriptions_debut),
       inscriptionsFin:
-        saison.inscriptions_fin || "",
+        versDateHeureLocale(saison.inscriptions_fin),
     });
-
     setAfficherFormulaire(true);
   }
-
   function fermerFormulaire() {
     if (operationEnCours) {
       return;
     }
-
     setAfficherFormulaire(false);
     setSaisonEnModification(null);
   }
-
   async function enregistrerSaison(e) {
   e.preventDefault();
-
   const nom = formulaire.nom.trim();
-
   if (
     !nom ||
     !formulaire.dateDebut ||
@@ -124,10 +120,8 @@ function GestionSaisons() {
     alert(
       "Veuillez remplir les champs obligatoires."
     );
-
     return;
   }
-
   if (
     formulaire.dateFin <
     formulaire.dateDebut
@@ -135,10 +129,8 @@ function GestionSaisons() {
     alert(
       "La date de fin doit être après la date de début."
     );
-
     return;
   }
-
   if (
     formulaire.inscriptionsDebut &&
     formulaire.inscriptionsFin &&
@@ -148,29 +140,24 @@ function GestionSaisons() {
     alert(
       "La fin des inscriptions doit être après leur date de début."
     );
-
     return;
   }
-
   setOperationEnCours(true);
-
   const donnees = {
     nom,
     date_debut:
       formulaire.dateDebut,
-
     date_fin:
       formulaire.dateFin,
-
     inscriptions_debut:
-      formulaire.inscriptionsDebut ||
-      null,
-
+      formulaire.inscriptionsDebut
+        ? new Date(formulaire.inscriptionsDebut).toISOString()
+        : null,
     inscriptions_fin:
-      formulaire.inscriptionsFin ||
-      null,
+      formulaire.inscriptionsFin
+        ? new Date(formulaire.inscriptionsFin).toISOString()
+        : null,
   };
-
   const resultat = saisonEnModification
     ? await supabase
         .from("saisons")
@@ -185,44 +172,33 @@ function GestionSaisons() {
           ...donnees,
           active: false,
         });
-
   setOperationEnCours(false);
-
   if (resultat.error) {
     console.error(
       "Erreur lors de l'enregistrement de la saison :",
       resultat.error
     );
-
     alert(
       `Impossible d'enregistrer la saison : ${resultat.error.message}`
     );
-
     return;
   }
-
   setAfficherFormulaire(false);
   setSaisonEnModification(null);
-
   await chargerSaisons();
 }
-
   async function activerSaison(saison) {
     if (saison.active) {
       return;
     }
-
     const confirmation =
       window.confirm(
         `Activer la saison ${saison.nom} ?`
       );
-
     if (!confirmation) {
       return;
     }
-
     setOperationEnCours(true);
-
     const {
       error: erreurDesactivation,
     } = await supabase
@@ -231,22 +207,17 @@ function GestionSaisons() {
         active: false,
       })
       .eq("active", true);
-
     if (erreurDesactivation) {
       setOperationEnCours(false);
-
       console.error(
         "Erreur lors de la désactivation de la saison active :",
         erreurDesactivation
       );
-
       alert(
         `Impossible de changer la saison active : ${erreurDesactivation.message}`
       );
-
       return;
     }
-
     const {
       error: erreurActivation,
     } = await supabase
@@ -255,37 +226,29 @@ function GestionSaisons() {
         active: true,
       })
       .eq("id", saison.id);
-
     setOperationEnCours(false);
-
     if (erreurActivation) {
       console.error(
         "Erreur lors de l'activation de la saison :",
         erreurActivation
       );
-
       alert(
         `Impossible d'activer la saison : ${erreurActivation.message}`
       );
-
       return;
     }
-
     await chargerSaisons();
   }
-
   return (
     <section className="carte-administration">
       <div className="entete-carte-parent">
         <div>
           <h1>Saisons</h1>
-
           <p>
             Créer et gérer les saisons
             d'inscription.
           </p>
         </div>
-
         <button
           type="button"
           className="bouton bouton-principal"
@@ -295,7 +258,6 @@ function GestionSaisons() {
           + Nouvelle saison
         </button>
       </div>
-
       {chargement ? (
         <p>Chargement...</p>
       ) : saisons.length === 0 ? (
@@ -313,25 +275,23 @@ function GestionSaisons() {
                 <h3>
                   {saison.nom}
                 </h3>
-
                 <p>
                   Du{" "}
                   {saison.date_debut} au{" "}
                   {saison.date_fin}
                 </p>
-
                 {saison.inscriptions_debut && (
                   <p>
                     Inscriptions du{" "}
-                    {
+                    {afficherDateHeure(
                       saison.inscriptions_debut
-                    }{" "}
+                    )}{" "}
                     au{" "}
-                    {saison.inscriptions_fin ||
-                      "—"}
+                    {afficherDateHeure(
+                      saison.inscriptions_fin
+                    )}
                   </p>
                 )}
-
                 <p>
                   Statut :{" "}
                   <strong>
@@ -341,7 +301,6 @@ function GestionSaisons() {
                   </strong>
                 </p>
               </div>
-
               <div className="actions-fiche">
                 <button
                   type="button"
@@ -357,7 +316,6 @@ function GestionSaisons() {
                 >
                   Modifier
                 </button>
-
                 {!saison.active && (
                   <button
                     type="button"
@@ -379,7 +337,6 @@ function GestionSaisons() {
           ))}
         </div>
       )}
-
       {afficherFormulaire && (
         <div
           className="fond-modale"
@@ -399,7 +356,6 @@ function GestionSaisons() {
                   ? "Modifier la saison"
                   : "Nouvelle saison"}
               </h2>
-
               <button
                 type="button"
                 className="bouton-fermer-modale"
@@ -413,7 +369,6 @@ function GestionSaisons() {
                 ×
               </button>
             </div>
-
             <form
               className="formulaire-creation-compte"
               onSubmit={
@@ -424,7 +379,6 @@ function GestionSaisons() {
                 <label htmlFor="saison-nom">
                   Nom
                 </label>
-
                 <input
                   id="saison-nom"
                   name="nom"
@@ -439,13 +393,11 @@ function GestionSaisons() {
                   required
                 />
               </div>
-
               <div className="ligne-formulaire">
                 <div className="champ-formulaire">
                   <label htmlFor="date-debut">
                     Date de début
                   </label>
-
                   <input
                     id="date-debut"
                     name="dateDebut"
@@ -459,12 +411,10 @@ function GestionSaisons() {
                     required
                   />
                 </div>
-
                 <div className="champ-formulaire">
                   <label htmlFor="date-fin">
                     Date de fin
                   </label>
-
                   <input
                     id="date-fin"
                     name="dateFin"
@@ -479,17 +429,15 @@ function GestionSaisons() {
                   />
                 </div>
               </div>
-
               <div className="ligne-formulaire">
                 <div className="champ-formulaire">
                   <label htmlFor="inscriptions-debut">
                     Début des inscriptions
                   </label>
-
                   <input
                     id="inscriptions-debut"
                     name="inscriptionsDebut"
-                    type="date"
+                    type="datetime-local"
                     value={
                       formulaire.inscriptionsDebut
                     }
@@ -498,16 +446,14 @@ function GestionSaisons() {
                     }
                   />
                 </div>
-
                 <div className="champ-formulaire">
                   <label htmlFor="inscriptions-fin">
                     Fin des inscriptions
                   </label>
-
                   <input
                     id="inscriptions-fin"
                     name="inscriptionsFin"
-                    type="date"
+                    type="datetime-local"
                     value={
                       formulaire.inscriptionsFin
                     }
@@ -517,7 +463,6 @@ function GestionSaisons() {
                   />
                 </div>
               </div>
-
               <div className="actions-modale">
                 <button
                   type="button"
@@ -531,7 +476,6 @@ function GestionSaisons() {
                 >
                   Annuler
                 </button>
-
                 <button
                   type="submit"
                   className="bouton bouton-principal"
@@ -553,5 +497,4 @@ function GestionSaisons() {
     </section>
   );
 }
-
 export default GestionSaisons;

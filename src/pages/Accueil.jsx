@@ -48,7 +48,14 @@ function Accueil() {
     if (error) {
       console.error(error);
       sessionStorage.removeItem(CLE_ESPACE_CONNEXION);
-      alert("Courriel ou mot de passe invalide.");
+
+      if (error.code === "email_not_confirmed") {
+        alert(
+          "Votre adresse courriel n'est pas encore confirmée. Consultez le courriel de confirmation reçu et cliquez sur le lien avant de vous connecter."
+        );
+      } else {
+        alert("Courriel ou mot de passe incorrect.");
+      }
       return;
     }
     if (!data.user) {
@@ -245,6 +252,7 @@ function Accueil() {
           email: courrielNormalise,
           password: motDePasseCreation,
           options: {
+            emailRedirectTo: "https://volleyball-attack.vercel.app",
             data: {
               prenom,
               nom,
@@ -277,10 +285,48 @@ function Accueil() {
         );
         return;
       }
-      setMessageCreation(
-        "Compte parent créé avec succès. Vous pouvez maintenant vous connecter."
-      );
+      if (!creation.user) {
+        setMessageCreation(
+          "Le compte n'a pas pu être créé correctement. Veuillez réessayer."
+        );
+        return;
+      }
+
+      if (!creation.session) {
+        setCourriel(courrielNormalise);
+        setMessageCreation(
+          "Compte créé avec succès. Un courriel de confirmation vous a été envoyé. Veuillez cliquer sur le lien dans ce courriel pour confirmer votre adresse avant de vous connecter."
+        );
+        return;
+      }
+
+      const { data: profilCree, error: erreurProfilCree } = await supabase
+        .from("profils")
+        .select("est_parent, actif")
+        .eq("id", creation.user.id)
+        .single();
+
+      if (erreurProfilCree || !profilCree) {
+        console.error(erreurProfilCree);
+        await supabase.auth.signOut();
+        setMessageCreation(
+          "Le compte d'authentification a été créé, mais le profil parent n'a pas pu être initialisé. Veuillez communiquer avec l'administration."
+        );
+        return;
+      }
+
+      if (!profilCree.actif || !profilCree.est_parent) {
+        await supabase.auth.signOut();
+        setMessageCreation(
+          "Le compte a été créé, mais son accès parent n'a pas été initialisé correctement. Veuillez communiquer avec l'administration."
+        );
+        return;
+      }
+
+      sessionStorage.setItem(CLE_ESPACE_CONNEXION, "parent");
       setCourriel(courrielNormalise);
+      window.location.reload();
+      return;
     } catch (error) {
       console.error(error);
       setMessageCreation(
