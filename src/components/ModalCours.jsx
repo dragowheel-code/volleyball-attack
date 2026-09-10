@@ -824,11 +824,11 @@ function ModalCours({
                     Tous
                   </option>
 
-                  <option value="fille">
+                  <option value="filles">
                     Filles
                   </option>
 
-                  <option value="garcon">
+                  <option value="garcons">
                     Garçons
                   </option>
                 </select>
