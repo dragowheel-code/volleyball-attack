@@ -35,6 +35,8 @@ function GestionInscriptions() {
     useState(null);
   const [remboursementEnCours, setRemboursementEnCours] =
     useState(null);
+  const [validationEnCours, setValidationEnCours] =
+    useState(null);
   useEffect(() => {
     chargerInscriptions();
   }, []);
@@ -256,6 +258,10 @@ function GestionInscriptions() {
         (inscription) =>
           inscription.statut === "liste_attente"
       ).length,
+      attenteValidation: inscriptions.filter(
+        (inscription) =>
+          inscription.statut === "en_attente_validation"
+      ).length,
     };
   }, [inscriptions]);
   function formaterMontant(montant) {
@@ -363,6 +369,40 @@ function GestionInscriptions() {
         )
     ).length;
     return placesOccupees < groupe.capacite;
+  }
+  async function validerInscriptionConditionnelle(inscription, accepter) {
+    if (!inscription?.id) {
+      return;
+    }
+    const nomEnfant = `${inscription.enfants?.prenom ?? ""} ${
+      inscription.enfants?.nom ?? ""
+    }`.trim();
+    const message = accepter
+      ? `Accepter l'inscription conditionnelle de ${nomEnfant || "cet enfant"} ? Si le groupe est complet, l'inscription sera placée sur la liste d'attente.`
+      : `Refuser l'inscription conditionnelle de ${nomEnfant || "cet enfant"} ?`;
+    if (!window.confirm(message)) {
+      return;
+    }
+    setErreur("");
+    setValidationEnCours(inscription.id);
+    const { error: erreurValidation } = await supabase.rpc(
+      "valider_inscription_conditionnelle",
+      {
+        p_inscription_id: inscription.id,
+        p_accepter: accepter,
+      }
+    );
+    if (erreurValidation) {
+      console.error(erreurValidation);
+      setErreur(
+        erreurValidation.message ||
+          "Impossible de traiter cette inscription conditionnelle."
+      );
+      setValidationEnCours(null);
+      return;
+    }
+    setValidationEnCours(null);
+    await chargerInscriptions();
   }
   async function offrirProchainePlace(inscription) {
     if (!inscription?.groupe_id) {
@@ -601,6 +641,14 @@ function GestionInscriptions() {
             </div>
             <div className="gestion-inscriptions-stat">
               <span>
+                À valider
+              </span>
+              <strong>
+                {statistiques.attenteValidation}
+              </strong>
+            </div>
+            <div className="gestion-inscriptions-stat">
+              <span>
                 À payer
               </span>
               <strong>
@@ -647,6 +695,9 @@ function GestionInscriptions() {
             >
               <option value="toutes">
                 Toutes les inscriptions
+              </option>
+              <option value="en_attente_validation">
+                En attente de validation
               </option>
               <option value="en_attente_paiement">
                 En attente de paiement
@@ -784,7 +835,8 @@ function GestionInscriptions() {
                                   </small>
                                 )}
                               </div>
-                            ) : inscription.statut === "liste_attente" ? (
+                            ) : inscription.statut === "liste_attente" ||
+                              inscription.statut === "en_attente_validation" ? (
                               <span className="gestion-inscriptions-pas-paiement">
                                 Aucun paiement
                               </span>
@@ -800,6 +852,38 @@ function GestionInscriptions() {
                           </td>
                           <td>
                             <div className="gestion-inscriptions-actions">
+                              {inscription.statut === "en_attente_validation" && (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="admin-bouton admin-bouton-primaire"
+                                    onClick={() =>
+                                      validerInscriptionConditionnelle(
+                                        inscription,
+                                        true
+                                      )
+                                    }
+                                    disabled={validationEnCours === inscription.id}
+                                  >
+                                    {validationEnCours === inscription.id
+                                      ? "Traitement..."
+                                      : "Accepter"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="admin-bouton admin-bouton-secondaire"
+                                    onClick={() =>
+                                      validerInscriptionConditionnelle(
+                                        inscription,
+                                        false
+                                      )
+                                    }
+                                    disabled={validationEnCours === inscription.id}
+                                  >
+                                    Refuser
+                                  </button>
+                                </>
+                              )}
                               {inscription.statut !== "annulee" &&
                               inscription.statut !== "liste_attente" &&
                               paiementARecevoir && (
@@ -853,7 +937,8 @@ function GestionInscriptions() {
                                       : "Groupe complet"}
                                   </button>
                                 )}
-                              {inscription.statut !== "annulee" && (
+                              {inscription.statut !== "annulee" &&
+                              inscription.statut !== "en_attente_validation" && (
                                 <button
                                   type="button"
                                   className="admin-bouton admin-bouton-secondaire"
