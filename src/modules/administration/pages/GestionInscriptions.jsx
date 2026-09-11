@@ -6,6 +6,7 @@ import {
 import { supabase } from "../../../lib/supabaseClient";
 import "./GestionInscriptions.css";
 const LIBELLES_STATUT = {
+  en_attente_validation: "En attente de validation",
   en_attente_paiement: "En attente de paiement",
   confirmee: "Confirmée",
   liste_attente: "Liste d'attente",
@@ -551,23 +552,16 @@ function GestionInscriptions() {
     }
     setConfirmationEnCours(true);
     setErreur("");
-    const reference =
-      referencePaiement.trim();
-    const {
-      error: erreurConfirmation,
-    } = await supabase.rpc(
+    const reference = referencePaiement.trim();
+    const numeroVersement = Number(
+      inscriptionPaiement.paiementAConfirmer?.numero_versement ?? 1
+    );
+    const { error: erreurConfirmation } = await supabase.rpc(
       "confirmer_paiement_recu",
       {
-        p_inscription_id:
-          inscriptionPaiement.id,
-        p_numero_versement:
-          Number(
-            inscriptionPaiement.paiementAConfirmer?.numero_versement ?? 1
-          ),
-        p_reference:
-          reference.length > 0
-            ? reference
-            : null,
+        p_inscription_id: inscriptionPaiement.id,
+        p_numero_versement: numeroVersement,
+        p_reference: reference.length > 0 ? reference : null,
       }
     );
     if (erreurConfirmation) {
@@ -578,6 +572,21 @@ function GestionInscriptions() {
       );
       setConfirmationEnCours(false);
       return;
+    }
+    const { error: erreurCourriel } = await supabase.functions.invoke(
+      "envoyer-courriel-paiement",
+      {
+        body: {
+          inscription_id: inscriptionPaiement.id,
+          numero_versement: numeroVersement,
+        },
+      }
+    );
+    if (erreurCourriel) {
+      console.error(
+        "Le paiement a été enregistré, mais le courriel n'a pas pu être envoyé :",
+        erreurCourriel
+      );
     }
     setInscriptionPaiement(null);
     setReferencePaiement("");

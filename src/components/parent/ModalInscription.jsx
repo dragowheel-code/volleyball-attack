@@ -43,6 +43,18 @@ function ModalInscription({
     let actif = true;
     async function chargerDonnees() {
       try {
+        const { data: parentId, error: erreurParent } = await supabase.rpc(
+          "parent_courant_id"
+        );
+
+        if (erreurParent) {
+          throw erreurParent;
+        }
+
+        if (!parentId) {
+          throw new Error("Aucun dossier parent actif n'est associé à ce compte.");
+        }
+
         const [
           resultatEnfants,
           resultatAnnees,
@@ -60,7 +72,8 @@ function ModalInscription({
                 date_naissance,
                 sexe
               )
-            `),
+            `)
+            .eq("parent_id", parentId),
           supabase
             .from("cours_annees_scolaires")
             .select(`
@@ -307,13 +320,34 @@ function ModalInscription({
     const resultat = Array.isArray(data)
       ? data[0]
       : data;
+
+    if (resultat?.inscription_id) {
+      const { error: erreurCourriel } = await supabase.functions.invoke(
+        "envoyer-courriel-inscription",
+        {
+          body: {
+            inscription_id: resultat.inscription_id,
+          },
+        }
+      );
+
+      if (erreurCourriel) {
+        console.error(
+          "L'inscription a été créée, mais le courriel de confirmation n'a pas pu être envoyé :",
+          erreurCourriel
+        );
+      }
+    }
     if (resultat?.statut === "liste_attente") {
-      const position =
-        resultat?.position_liste_attente;
+      const position = resultat?.position_liste_attente;
       setSucces(
         position
           ? `L'enfant a été ajouté à la liste d'attente en position ${position}.`
           : "L'enfant a été ajouté à la liste d'attente."
+      );
+    } else if (resultat?.statut === "en_attente_validation") {
+      setSucces(
+        "L'inscription a été reçue et doit être validée par l'administration. Aucun paiement n'est demandé pour le moment."
       );
     } else {
       setSucces(

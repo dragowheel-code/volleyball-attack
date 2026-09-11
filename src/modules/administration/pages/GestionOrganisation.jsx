@@ -14,6 +14,7 @@ const ORGANISATION_VIDE = {
   numero_tps: "",
   numero_tvq: "",
   instructions_paiement: "",
+  logo_url: "",
 };
 
 function GestionOrganisation() {
@@ -21,11 +22,12 @@ function GestionOrganisation() {
   const [formulaire, setFormulaire] = useState(ORGANISATION_VIDE);
   const [chargement, setChargement] = useState(true);
   const [enregistrement, setEnregistrement] = useState(false);
+  const [televersementLogo, setTeleversementLogo] = useState(false);
   const [erreur, setErreur] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    chargerOrganisation();
+    void chargerOrganisation();
   }, []);
 
   async function chargerOrganisation() {
@@ -47,24 +49,21 @@ function GestionOrganisation() {
         courriel,
         numero_tps,
         numero_tvq,
-        instructions_paiement
+        instructions_paiement,
+        logo_url
       `)
       .limit(1)
       .maybeSingle();
 
     if (error) {
       console.error(error);
-      setErreur(
-        "Impossible de charger les informations de l'organisation."
-      );
+      setErreur("Impossible de charger les informations de l'organisation.");
       setChargement(false);
       return;
     }
 
     if (!data) {
-      setErreur(
-        "Aucune fiche d'organisation n'a été trouvée."
-      );
+      setErreur("Aucune fiche d'organisation n'a été trouvée.");
       setChargement(false);
       return;
     }
@@ -81,30 +80,92 @@ function GestionOrganisation() {
       courriel: data.courriel ?? "",
       numero_tps: data.numero_tps ?? "",
       numero_tvq: data.numero_tvq ?? "",
-      instructions_paiement:
-        data.instructions_paiement ?? "",
+      instructions_paiement: data.instructions_paiement ?? "",
+      logo_url: data.logo_url ?? "",
     });
-
     setChargement(false);
   }
 
   function modifierChamp(event) {
     const { name, value } = event.target;
-
     setFormulaire((actuel) => ({
       ...actuel,
       [name]: value,
     }));
-
     setMessage("");
+  }
+
+  async function televerserLogo(event) {
+    const fichier = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!fichier || !organisationId) return;
+
+    if (!fichier.type.startsWith("image/")) {
+      setErreur("Le fichier choisi doit être une image.");
+      return;
+    }
+
+    if (fichier.size > 5 * 1024 * 1024) {
+      setErreur("Le logo doit avoir une taille maximale de 5 Mo.");
+      return;
+    }
+
+    setTeleversementLogo(true);
+    setErreur("");
+    setMessage("");
+
+    const extension = fichier.name.split(".").pop()?.toLowerCase() || "png";
+    const chemin = `logo/logo-organisation.${extension}`;
+
+    const { error: erreurTeleversement } = await supabase.storage
+      .from("organisation")
+      .upload(chemin, fichier, {
+        cacheControl: "3600",
+        upsert: true,
+        contentType: fichier.type,
+      });
+
+    if (erreurTeleversement) {
+      console.error(erreurTeleversement);
+      setErreur("Impossible de téléverser le logo.");
+      setTeleversementLogo(false);
+      return;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("organisation").getPublicUrl(chemin);
+
+    const logoUrlAvecVersion = `${publicUrl}?v=${Date.now()}`;
+
+    const { error: erreurOrganisation } = await supabase
+      .from("organisation")
+      .update({
+        logo_url: logoUrlAvecVersion,
+        date_modification: new Date().toISOString(),
+      })
+      .eq("id", organisationId);
+
+    if (erreurOrganisation) {
+      console.error(erreurOrganisation);
+      setErreur("Le logo a été téléversé, mais son adresse n'a pas pu être enregistrée.");
+      setTeleversementLogo(false);
+      return;
+    }
+
+    setFormulaire((actuel) => ({
+      ...actuel,
+      logo_url: logoUrlAvecVersion,
+    }));
+    setMessage("Logo enregistré avec succès.");
+    setTeleversementLogo(false);
   }
 
   async function enregistrer(event) {
     event.preventDefault();
 
-    if (!organisationId) {
-      return;
-    }
+    if (!organisationId) return;
 
     const nomLegal = formulaire.nom_legal.trim();
 
@@ -121,35 +182,23 @@ function GestionOrganisation() {
       .from("organisation")
       .update({
         nom_legal: nomLegal,
-        nom_affichage:
-          formulaire.nom_affichage.trim() || null,
-        adresse:
-          formulaire.adresse.trim() || null,
-        ville:
-          formulaire.ville.trim() || null,
-        province:
-          formulaire.province.trim() || null,
-        code_postal:
-          formulaire.code_postal.trim() || null,
-        telephone:
-          formulaire.telephone.trim() || null,
-        courriel:
-          formulaire.courriel.trim() || null,
-        numero_tps:
-          formulaire.numero_tps.trim() || null,
-        numero_tvq:
-          formulaire.numero_tvq.trim() || null,
-        instructions_paiement:
-          formulaire.instructions_paiement.trim() || null,
+        nom_affichage: formulaire.nom_affichage.trim() || null,
+        adresse: formulaire.adresse.trim() || null,
+        ville: formulaire.ville.trim() || null,
+        province: formulaire.province.trim() || null,
+        code_postal: formulaire.code_postal.trim() || null,
+        telephone: formulaire.telephone.trim() || null,
+        courriel: formulaire.courriel.trim() || null,
+        numero_tps: formulaire.numero_tps.trim() || null,
+        numero_tvq: formulaire.numero_tvq.trim() || null,
+        instructions_paiement: formulaire.instructions_paiement.trim() || null,
         date_modification: new Date().toISOString(),
       })
       .eq("id", organisationId);
 
     if (error) {
       console.error(error);
-      setErreur(
-        "Impossible d'enregistrer les informations de l'organisation."
-      );
+      setErreur("Impossible d'enregistrer les informations de l'organisation.");
       setEnregistrement(false);
       return;
     }
@@ -162,9 +211,7 @@ function GestionOrganisation() {
   if (chargement) {
     return (
       <section className="gestion-organisation">
-        <div className="gestion-organisation-vide">
-          Chargement...
-        </div>
+        <div className="gestion-organisation-vide">Chargement...</div>
       </section>
     );
   }
@@ -175,22 +222,18 @@ function GestionOrganisation() {
         <div>
           <h1>Organisation</h1>
           <p>
-            Informations officielles utilisées notamment
-            sur les factures et les reçus.
+            Informations officielles utilisées sur la plateforme, dans les
+            courriels, les factures et les reçus.
           </p>
         </div>
       </div>
 
       {erreur && (
-        <div className="gestion-organisation-erreur">
-          {erreur}
-        </div>
+        <div className="gestion-organisation-erreur">{erreur}</div>
       )}
 
       {message && (
-        <div className="gestion-organisation-succes">
-          {message}
-        </div>
+        <div className="gestion-organisation-succes">{message}</div>
       )}
 
       <form
@@ -199,6 +242,33 @@ function GestionOrganisation() {
       >
         <div className="gestion-organisation-section">
           <h2>Identification</h2>
+
+          <div className="gestion-organisation-logo-bloc">
+            <div className="gestion-organisation-logo-apercu">
+              <img
+                src={formulaire.logo_url || "/logo-attack.png"}
+                alt="Logo de l'organisation"
+              />
+            </div>
+
+            <div>
+              <p>
+                Ce logo sera utilisé sur la page d'accueil et dans les
+                communications de l'organisation.
+              </p>
+
+              <label className="admin-bouton admin-bouton-secondaire">
+                {televersementLogo ? "Téléversement..." : "Choisir un logo"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={televerserLogo}
+                  disabled={televersementLogo}
+                  hidden
+                />
+              </label>
+            </div>
+          </div>
 
           <div className="gestion-organisation-grille">
             <label>
@@ -335,11 +405,9 @@ function GestionOrganisation() {
           <button
             type="submit"
             className="admin-bouton admin-bouton-principal"
-            disabled={enregistrement}
+            disabled={enregistrement || televersementLogo}
           >
-            {enregistrement
-              ? "Enregistrement..."
-              : "Enregistrer"}
+            {enregistrement ? "Enregistrement..." : "Enregistrer"}
           </button>
         </div>
       </form>

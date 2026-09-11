@@ -1,7 +1,44 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
 const CLE_ESPACE_CONNEXION = "volleyball-attack-espace";
 function Accueil() {
+  const [organisation, setOrganisation] = useState({
+    nom_affichage: "Volley-Ball Attack Sept-Îles",
+    logo_url: "/logo-attack.png",
+  });
+
+  useEffect(() => {
+    let annule = false;
+
+    async function chargerOrganisation() {
+      const { data, error } = await supabase
+        .from("organisation")
+        .select("nom_affichage, logo_url")
+        .limit(1)
+        .maybeSingle();
+
+      if (annule) return;
+
+      if (error) {
+        console.error("Erreur lors du chargement de l'organisation :", error);
+        return;
+      }
+
+      if (data) {
+        setOrganisation({
+          nom_affichage:
+            data.nom_affichage?.trim() || "Volley-Ball Attack Sept-Îles",
+          logo_url: data.logo_url?.trim() || "/logo-attack.png",
+        });
+      }
+    }
+
+    void chargerOrganisation();
+
+    return () => {
+      annule = true;
+    };
+  }, []);
   const [courriel, setCourriel] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [afficherMotPasseOublie, setAfficherMotPasseOublie] = useState(false);
@@ -48,7 +85,6 @@ function Accueil() {
     if (error) {
       console.error(error);
       sessionStorage.removeItem(CLE_ESPACE_CONNEXION);
-
       if (error.code === "email_not_confirmed") {
         alert(
           "Votre adresse courriel n'est pas encore confirmée. Consultez le courriel de confirmation reçu et cliquez sur le lien avant de vous connecter."
@@ -291,7 +327,6 @@ function Accueil() {
         );
         return;
       }
-
       if (!creation.session) {
         setCourriel(courrielNormalise);
         setMessageCreation(
@@ -299,13 +334,11 @@ function Accueil() {
         );
         return;
       }
-
       const { data: profilCree, error: erreurProfilCree } = await supabase
         .from("profils")
         .select("est_parent, actif")
         .eq("id", creation.user.id)
         .single();
-
       if (erreurProfilCree || !profilCree) {
         console.error(erreurProfilCree);
         await supabase.auth.signOut();
@@ -314,7 +347,6 @@ function Accueil() {
         );
         return;
       }
-
       if (!profilCree.actif || !profilCree.est_parent) {
         await supabase.auth.signOut();
         setMessageCreation(
@@ -322,7 +354,6 @@ function Accueil() {
         );
         return;
       }
-
       sessionStorage.setItem(CLE_ESPACE_CONNEXION, "parent");
       setCourriel(courrielNormalise);
       window.location.reload();
@@ -499,11 +530,11 @@ function Accueil() {
       <div className="accueil-conteneur">
         <header className="accueil-entete">
           <img
-            src="/logo-attack.png"
-            alt="Logo Volley-Ball Attack Sept-Îles"
+            src={organisation.logo_url}
+            alt={`Logo ${organisation.nom_affichage}`}
             className="logo-attack"
           />
-          <h1>Volley-Ball Attack Sept-Îles</h1>
+          <h1>{organisation.nom_affichage}</h1>
           <p className="accueil-sous-titre">
             Inscription aux activités de volleyball
           </p>

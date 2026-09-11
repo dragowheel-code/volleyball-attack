@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-// Supabase //
+  //Supabase//
 import { supabase } from "../lib/supabaseClient";
-// Modals //
+  //Modals//
 import ModalAjoutEnfant from "../components/parent/ModalAjoutEnfant";
 import ModalAjoutParent from "../components/parent/ModalAjoutParent";
 import ModalContactUrgence from "../components/parent/ModalContactUrgence";
@@ -9,9 +9,7 @@ import ModalEnfant from "../components/parent/ModalEnfant";
 import ModalProfilParent from "../components/parent/ModalProfilParent";
 import ActivitesDisponibles from "../components/parent/ActivitesDisponibles";
 function EspaceParent({ profil }) {
-  // ========================================================= //
-  // ENFANTS //
-  // ========================================================= //
+  //=========================================================//  //ENFANTS//  //=========================================================//
   const [enfants, setEnfants] = useState([]);
   const [chargementEnfants, setChargementEnfants] =
     useState(true);
@@ -34,9 +32,7 @@ function EspaceParent({ profil }) {
     setMessageModificationEnfant,
   ] = useState("");
   const [afficherActivites, setAfficherActivites] = useState(false);
-  // ========================================================= //
-  // PARENTS / RESPONSABLES //
-  // ========================================================= //
+  //=========================================================//  //PARENTS / RESPONSABLES//  //=========================================================//
   const [parentsFamille, setParentsFamille] =
     useState([]);
   const [chargementParents, setChargementParents] =
@@ -53,9 +49,7 @@ function EspaceParent({ profil }) {
     messageInvitation,
     setMessageInvitation,
   ] = useState("");
-  // ========================================================= //
-  // CONTACTS D'URGENCE //
-  // ========================================================= //
+  //=========================================================//  //CONTACTS D'URGENCE//  //=========================================================//
   const [contactsUrgence, setContactsUrgence] =
     useState([]);
   const [
@@ -78,9 +72,8 @@ function EspaceParent({ profil }) {
     contactEnModification,
     setContactEnModification,
   ] = useState(null);
-  // ========================================================= //
-  // INSCRIPTIONS //
-  // =========================================================//   
+  //=========================================================//  //INSCRIPTIONS//
+  // =========================================================//  *
   const [inscriptions, setInscriptions] = useState([]);
   const [chargementInscriptions, setChargementInscriptions] = useState(true);
   const [erreurInscriptions, setErreurInscriptions] = useState("");
@@ -90,9 +83,7 @@ function EspaceParent({ profil }) {
   const [chargementHistoriqueDocuments, setChargementHistoriqueDocuments] =
     useState(true);
   const [erreurHistoriqueDocuments, setErreurHistoriqueDocuments] = useState("");
-  // ========================================================= //
-  // CHARGEMENT DES INSCRIPTIONS //
-  // ========================================================= //
+  //=========================================================//  //CHARGEMENT DES INSCRIPTIONS//  //=========================================================//
   const chargerDocumentsFinanciers = useCallback(async (listeInscriptions) => {
     const inscriptionsAvecPaiement = listeInscriptions.filter(
       (inscription) =>
@@ -201,6 +192,7 @@ function EspaceParent({ profil }) {
   function libelleStatutInscription(statut) {
     const libelles = {
       en_attente_paiement: "En attente de paiement",
+      en_attente_validation: "En attente de validation",
       confirmee: "Confirmée",
       liste_attente: "Liste d'attente",
       annulee: "Annulée",
@@ -215,11 +207,24 @@ function EspaceParent({ profil }) {
     };
     return libelles[statut] ?? statut ?? "—";
   }
-  // ========================================================= //
-  // CHARGEMENT DES ENFANTS //
-  // ========================================================= //
+  //=========================================================//  //CHARGEMENT DES ENFANTS//  //=========================================================//
   const chargerEnfants = useCallback(async () => {
     setChargementEnfants(true);
+
+    const { data: parentId, error: erreurParent } = await supabase.rpc(
+      "parent_courant_id"
+    );
+
+    if (erreurParent || !parentId) {
+      console.error(
+        "Erreur lors de l'identification du parent :",
+        erreurParent
+      );
+      setEnfants([]);
+      setChargementEnfants(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("parents_enfants")
       .select(`
@@ -235,7 +240,9 @@ function EspaceParent({ profil }) {
           allergies,
           problemes_sante
         )
-      `);
+      `)
+      .eq("parent_id", parentId);
+
     if (error) {
       console.error(
         "Erreur lors du chargement des enfants :",
@@ -245,18 +252,18 @@ function EspaceParent({ profil }) {
       setChargementEnfants(false);
       return;
     }
+
     const liste = (data || [])
       .map((ligne) => ({
         ...ligne.enfants,
         lienParent: ligne.lien,
       }))
       .filter((enfant) => enfant?.id);
+
     setEnfants(liste);
     setChargementEnfants(false);
   }, []);
-  // ========================================================= //
-  // CHARGEMENT DES PARENTS //
-  // ========================================================= //
+  //=========================================================//  //CHARGEMENT DES PARENTS//  //=========================================================//
   const chargerParentsFamille = useCallback(async () => {
     setChargementParents(true);
     const { data, error } = await supabase.rpc(
@@ -274,9 +281,7 @@ function EspaceParent({ profil }) {
     setParentsFamille(data || []);
     setChargementParents(false);
   }, []);
-  // ========================================================= //
-  // CHARGEMENT DES CONTACTS D'URGENCE //
-  // ========================================================= //
+  //=========================================================//  //CHARGEMENT DES CONTACTS D'URGENCE//  //=========================================================//
   const chargerContactsUrgence = useCallback(async () => {
     setChargementContacts(true);
     const { data, error } = await supabase.rpc(
@@ -294,9 +299,7 @@ function EspaceParent({ profil }) {
     setContactsUrgence(data || []);
     setChargementContacts(false);
   }, []);
-  // ========================================================= //
-  // CHARGEMENT INITIAL //
-  // ========================================================= //
+  //=========================================================//  //CHARGEMENT INITIAL//  //=========================================================//
   useEffect(() => {
     let annule = false;
     queueMicrotask(() => {
@@ -319,9 +322,7 @@ function EspaceParent({ profil }) {
     chargerInscriptions,
     chargerHistoriqueDocuments,
   ]);
-  // ========================================================= //
-  // GESTION DES CONTACTS D'URGENCE //
-  // ========================================================= //
+  //=========================================================//  //GESTION DES CONTACTS D'URGENCE//  //=========================================================//
   function ouvrirAjoutContact() {
     setContactEnModification(null);
     setMessageAjoutContact("");
@@ -449,9 +450,7 @@ function EspaceParent({ profil }) {
     }
     await chargerContactsUrgence();
   }
-  // ========================================================= //
-  // MON PROFIL //
-  // ========================================================= //
+  //=========================================================//  //MON PROFIL//  //=========================================================//
   const [profilParentComplet, setProfilParentComplet] =
     useState(null);
   const [afficherProfilParent, setAfficherProfilParent] =
@@ -470,9 +469,7 @@ const [
 ] = useState("");
 const [courrielParent, setCourrielParent] =
   useState("");
-  // ========================================================= //
-  // DÉCONNEXION //
-  // ========================================================= //
+  //=========================================================//  //DÉCONNEXION//  //=========================================================//
   async function seDeconnecter() {
     const { error } =
       await supabase.auth.signOut();
@@ -483,9 +480,7 @@ const [courrielParent, setCourrielParent] =
       );
     }
   }
-  // ========================================================= //
-  // AJOUT D'UN ENFANT //
-  // ========================================================= //
+  //=========================================================//  //AJOUT D'UN ENFANT//  //=========================================================//
   function ouvrirAjoutEnfant() {
     setMessageAjout("");
     setAfficherAjoutEnfant(true);
@@ -560,9 +555,7 @@ const [courrielParent, setCourrielParent] =
     setAfficherAjoutEnfant(false);
     setMessageAjout("");
   }
-  // ========================================================= //
-  // MODIFICATION D'UN ENFANT //
-  // ========================================================= //
+  //=========================================================//  //MODIFICATION D'UN ENFANT//  //=========================================================//
   function ouvrirEnfant(enfant) {
     setEnfantEnModification(enfant);
     setMessageModificationEnfant("");
@@ -637,9 +630,7 @@ const [courrielParent, setCourrielParent] =
     setEnfantEnModification(null);
     setMessageModificationEnfant("");
   }
-  // ========================================================= //
-  // INVITATION DU DEUXIÈME PARENT //
-  // ========================================================= //
+  //=========================================================//  //INVITATION DU DEUXIÈME PARENT//  //=========================================================//
   function ouvrirAjoutParent() {
     setMessageInvitation("");
     setAfficherAjoutParent(true);
@@ -676,7 +667,7 @@ const [courrielParent, setCourrielParent] =
           const corpsErreur = await error.context.json();
           if (corpsErreur?.message) message = corpsErreur.message;
         } catch {
-          // La réponse ne contenait pas de JSON exploitable. //
+  //La réponse ne contenait pas de JSON exploitable.//
         }
       }
       setMessageInvitation(message);
@@ -699,9 +690,7 @@ const [courrielParent, setCourrielParent] =
       alert(data.message || "Le deuxième parent a été ajouté.");
     }
   }
-  // ========================================================= //
-  // PROFIL PARENT //
-  // ========================================================= //
+  //=========================================================//  //PROFIL PARENT//  //=========================================================//
 async function ouvrirProfilParent() {
   setMessageModificationProfil("");
   setChargementProfilParent(true);
@@ -788,13 +777,10 @@ async function enregistrerProfilParent(
   setAfficherProfilParent(false);
   setProfilParentComplet(null);
   setMessageModificationProfil("");
-  // Recharge la page afin que le prénom //
-  // affiché dans l'entête soit également actualisé. //
+  //Recharge la page afin que le prénom//  //affiché dans l'entête soit également actualisé.//
   window.location.reload();
 }
-  // ========================================================= //
-  // ACTIVITÉS DISPONIBLES //
-  // ========================================================= //
+  //=========================================================//  //ACTIVITÉS DISPONIBLES//  //=========================================================//
   if (afficherActivites) {
     return (
       <main className="page-espace-parent">
@@ -806,9 +792,7 @@ async function enregistrerProfilParent(
       </main>
     );
   }
-  // ========================================================= //
-  // AFFICHAGE //
-  // ========================================================= //
+  //=========================================================//  //AFFICHAGE//  //=========================================================//
   return (
     <main className="page-espace-parent">
       <div className="espace-parent-conteneur">
