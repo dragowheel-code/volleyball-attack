@@ -145,11 +145,12 @@ function Accueil() {
       return;
     }
     setRecuperationEnCours(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      courrielNormalise,
+    const { error } = await supabase.functions.invoke(
+      "envoyer-courriel-reinitialisation",
       {
-        redirectTo:
-          "https://volleyball-attack.vercel.app/reinitialiser-mot-de-passe",
+        body: {
+        courriel: courrielNormalise,
+       },
       }
     );
     setRecuperationEnCours(false);
