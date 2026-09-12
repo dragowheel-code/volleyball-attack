@@ -138,6 +138,83 @@ function GestionAdministrateurs() {
     setEnvoi(false);
     await chargerAdministrateurs();
   }
+  async function renvoyerInvitation(
+  administrateur
+) {
+  const nomComplet =
+    `${administrateur.prenom ?? ""} ${
+      administrateur.nom ?? ""
+    }`.trim();
+
+  const confirme =
+    window.confirm(
+      `Renvoyer l'invitation administrateur à ${
+        nomComplet ||
+        administrateur.courriel
+      } ?`
+    );
+
+  if (!confirme) {
+    return;
+  }
+
+  setOperationEnCours(
+    `invitation-${administrateur.id}`
+  );
+
+  setErreur("");
+  setMessage("");
+
+  try {
+    const {
+      data,
+      error,
+    } = await supabase.functions.invoke(
+      "inviter-administrateur",
+      {
+        body: {
+          action: "renvoyer",
+          prenom:
+            administrateur.prenom,
+          nom:
+            administrateur.nom,
+          courriel:
+            administrateur.courriel,
+        },
+      }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.error) {
+      throw new Error(
+        data.error
+      );
+    }
+
+    setMessage(
+      data?.message ??
+        "Invitation administrateur renvoyée."
+    );
+
+    await chargerAdministrateurs();
+  } catch (error) {
+    console.error(
+      "Erreur lors du renvoi de l'invitation administrateur :",
+      error
+    );
+
+    setErreur(
+      error instanceof Error
+        ? error.message
+        : "Impossible de renvoyer l'invitation."
+    );
+  } finally {
+    setOperationEnCours(null);
+  }
+}
   // =========================================================
   // RÉVOQUER
   // =========================================================
@@ -423,7 +500,23 @@ function GestionAdministrateurs() {
                       </td>
                       <td>
                         <div className="gestion-administrateurs-actions">
-                          {administrateur.statut === "revoque" ? (
+                          {administrateur.statut === "invitation_en_attente" ? (
+  <button
+    type="button"
+    className="admin-bouton admin-bouton-principal"
+    disabled={traitement}
+    onClick={() =>
+      renvoyerInvitation(
+        administrateur
+      )
+    }
+  >
+    {operationEnCours ===
+    `invitation-${administrateur.id}`
+      ? "Envoi..."
+      : "Renvoyer l'invitation"}
+  </button>
+) : administrateur.statut === "revoque" ? (
                             <button
                               type="button"
                               className="admin-bouton admin-bouton-principal"

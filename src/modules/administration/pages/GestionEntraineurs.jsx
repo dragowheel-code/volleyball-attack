@@ -39,43 +39,27 @@ function GestionEntraineurs() {
   }, []);
 
   async function chargerEntraineurs() {
-    setChargement(true);
+  setChargement(true);
 
-    const { data, error } =
-      await supabase
-        .from("profils")
-        .select(`
-          id,
-          prenom,
-          nom,
-          actif,
-          est_entraineur,
-          entraineur_enregistre,
-          date_creation
-        `)
-        .eq(
-          "entraineur_enregistre",
-          true
-        )
-        .order("nom")
-        .order("prenom");
+  const { data, error } =
+    await supabase.rpc(
+      "lister_entraineurs_administration"
+    );
 
-    if (error) {
-      console.error(error);
+  if (error) {
+    console.error(error);
 
-      alert(
-        "Impossible de charger les entraîneurs."
-      );
+    alert(
+      `Impossible de charger les entraîneurs : ${error.message}`
+    );
 
-      setEntraineurs([]);
-    } else {
-      setEntraineurs(
-        data ?? []
-      );
-    }
-
-    setChargement(false);
+    setEntraineurs([]);
+  } else {
+    setEntraineurs(data ?? []);
   }
+
+  setChargement(false);
+}
 
   // =========================================================
   // INVITATION TERMINÉE
@@ -86,6 +70,60 @@ function GestionEntraineurs() {
 
     await chargerEntraineurs();
   }
+  async function renvoyerInvitation(entraineur) {
+  const confirmation = window.confirm(
+    `Renvoyer une invitation à ${entraineur.prenom} ${entraineur.nom} ?`
+  );
+
+  if (!confirmation) {
+    return;
+  }
+
+  setOperationEnCours(`invitation-${entraineur.id}`);
+
+  try {
+    const { data, error } =
+      await supabase.functions.invoke(
+        "inviter-entraineur",
+        {
+          body: {
+            action: "renvoyer",
+            prenom: entraineur.prenom,
+            nom: entraineur.nom,
+            courriel: entraineur.courriel,
+          },
+        }
+      );
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.error) {
+      throw new Error(data.error);
+    }
+
+    alert(
+      data?.message ??
+        "Invitation renvoyée avec succès."
+    );
+
+    await chargerEntraineurs();
+  } catch (error) {
+    console.error(
+      "Erreur lors du renvoi de l'invitation :",
+      error
+    );
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Impossible de renvoyer l'invitation."
+    );
+  } finally {
+    setOperationEnCours(null);
+  }
+}
 
   // =========================================================
   // RÉVOQUER / RÉACTIVER L'ACCÈS
@@ -241,6 +279,9 @@ function GestionEntraineurs() {
               const compteGlobalInactif =
                 !entraineur.actif;
 
+              const invitationEnAttente =
+                !entraineur.compte_active;
+
               return (
                 <article
                   key={entraineur.id}
@@ -273,8 +314,10 @@ function GestionEntraineurs() {
                         }
                       >
                         {compteGlobalInactif
-                          ? "Compte désactivé"
-                          : accesActif
+                            ? "Compte désactivé"
+                            : invitationEnAttente
+                            ? "Invitation en attente"
+                            : accesActif
                             ? "Accès actif"
                             : "Accès révoqué"}
                       </span>
@@ -282,55 +325,75 @@ function GestionEntraineurs() {
                   </div>
 
                   <div className="gestion-entraineurs-actions">
-                    <button
-                      type="button"
-                      className={
-                        accesActif
-                          ? "admin-bouton admin-bouton-secondaire"
-                          : "admin-bouton admin-bouton-principal"
-                      }
-                      disabled={
-                        operationEnCours ===
-                          entraineur.id ||
-                        operationEnCours ===
-                          `retirer-${entraineur.id}` ||
-                        compteGlobalInactif
-                      }
-                      onClick={() =>
-                        modifierAcces(
-                          entraineur
-                        )
-                      }
-                    >
-                      {operationEnCours ===
-                      entraineur.id
-                        ? "Traitement..."
-                        : accesActif
-                          ? "Révoquer l'accès"
-                          : "Réactiver l'accès"}
-                    </button>
+  {invitationEnAttente &&
+    !compteGlobalInactif && (
+      <button
+        type="button"
+        className="admin-bouton admin-bouton-principal"
+        disabled={
+          operationEnCours ===
+          `invitation-${entraineur.id}`
+        }
+        onClick={() =>
+          renvoyerInvitation(entraineur)
+        }
+      >
+        {operationEnCours ===
+        `invitation-${entraineur.id}`
+          ? "Envoi..."
+          : "Renvoyer l'invitation"}
+      </button>
+    )}
 
-                    <button
-                      type="button"
-                      className="admin-bouton admin-bouton-secondaire"
-                      disabled={
-                        operationEnCours ===
-                          entraineur.id ||
-                        operationEnCours ===
-                          `retirer-${entraineur.id}`
-                      }
-                      onClick={() =>
-                        retirerEntraineur(
-                          entraineur
-                        )
-                      }
-                    >
-                      {operationEnCours ===
-                      `retirer-${entraineur.id}`
-                        ? "Retrait..."
-                        : "Retirer"}
-                    </button>
-                  </div>
+  {!invitationEnAttente && (
+    <button
+      type="button"
+      className={
+        accesActif
+          ? "admin-bouton admin-bouton-secondaire"
+          : "admin-bouton admin-bouton-principal"
+      }
+      disabled={
+        operationEnCours ===
+          entraineur.id ||
+        operationEnCours ===
+          `retirer-${entraineur.id}` ||
+        compteGlobalInactif
+      }
+      onClick={() =>
+        modifierAcces(entraineur)
+      }
+    >
+      {operationEnCours ===
+      entraineur.id
+        ? "Traitement..."
+        : accesActif
+          ? "Révoquer l'accès"
+          : "Réactiver l'accès"}
+    </button>
+  )}
+
+  <button
+    type="button"
+    className="admin-bouton admin-bouton-secondaire"
+    disabled={
+      operationEnCours ===
+        entraineur.id ||
+      operationEnCours ===
+        `retirer-${entraineur.id}` ||
+      operationEnCours ===
+        `invitation-${entraineur.id}`
+    }
+    onClick={() =>
+      retirerEntraineur(entraineur)
+    }
+  >
+    {operationEnCours ===
+    `retirer-${entraineur.id}`
+      ? "Retrait..."
+      : "Retirer"}
+  </button>
+</div>
                 </article>
               );
             }

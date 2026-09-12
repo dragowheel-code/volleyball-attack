@@ -402,6 +402,29 @@ function GestionInscriptions() {
       setValidationEnCours(null);
       return;
     }
+    if (accepter) {
+  const { error: erreurCourriel } =
+    await supabase.functions.invoke(
+      "envoyer-courriel-inscription",
+      {
+        body: {
+          inscription_id: inscription.id,
+          origine: "validation_conditionnelle",
+        },
+      }
+    );
+
+  if (erreurCourriel) {
+    console.error(
+      "L'inscription conditionnelle a été acceptée, mais le courriel n'a pas pu être envoyé :",
+      erreurCourriel
+    );
+
+    setErreur(
+      "L'inscription a été acceptée, mais le courriel de confirmation n'a pas pu être envoyé."
+    );
+  }
+}
     setValidationEnCours(null);
     await chargerInscriptions();
   }
@@ -893,6 +916,7 @@ function GestionInscriptions() {
                                   </button>
                                 </>
                               )}
+                              
                               {inscription.statut !== "annulee" &&
                               inscription.statut !== "liste_attente" &&
                               paiementARecevoir && (

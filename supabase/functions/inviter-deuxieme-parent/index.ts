@@ -182,6 +182,11 @@ Deno.serve(async (req) => {
     }
 
     const corps = await req.json();
+    const action = String(
+  corps?.action ?? "inviter"
+)
+  .trim()
+  .toLowerCase();
     const modeTest = corps?.mode_test === true;
     const testEmail = String(corps?.test_email ?? "").trim().toLowerCase();
 
@@ -219,12 +224,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!prenom || !nom || !courriel || !lien) {
-      return reponseErreur(
-        "Le prénom, le nom, le courriel et le lien sont obligatoires.",
-        400
-      );
-    }
+    if (!prenom || !nom || !courriel) {
+  return reponseErreur(
+    "Le prénom, le nom et le courriel sont obligatoires.",
+    400
+  );
+}
+
+if (action !== "renvoyer" && !lien) {
+  return reponseErreur(
+    "Le lien avec les enfants est obligatoire.",
+    400
+  );
+}
 
     if (user.email?.toLowerCase() === courriel) {
       return reponseErreur(
@@ -234,21 +246,123 @@ Deno.serve(async (req) => {
     }
 
     const utilisateurExistant =
-      await trouverUtilisateurParCourriel(supabaseAdmin, courriel);
+  await trouverUtilisateurParCourriel(
+    supabaseAdmin,
+    courriel
+  );
 
-    if (utilisateurExistant) {
-      const resultat = await rattacherUtilisateurExistant({
-        supabaseAdmin,
-        utilisateurId: utilisateurExistant.id,
-        familleId: parentInviteur.famille_id,
-        prenom,
-        nom,
-        telephone,
-        lien,
-      });
+if (
+  utilisateurExistant &&
+  action === "renvoyer"
+) {
+  const {
+    data: parentInvite,
+    error: erreurParentInvite,
+  } = await supabaseAdmin
+    .from("parents")
+    .select("id, famille_id")
+    .eq(
+      "profil_id",
+      utilisateurExistant.id
+    )
+    .maybeSingle();
 
-      return reponseSucces(resultat);
-    }
+  if (erreurParentInvite) {
+    throw erreurParentInvite;
+  }
+
+  if (
+    !parentInvite ||
+    parentInvite.famille_id !==
+      parentInviteur.famille_id
+  ) {
+    return reponseErreur(
+      "Cette invitation n'appartient pas à votre famille.",
+      403
+    );
+  }
+
+  const redirectTo =
+    "https://www.volleyballattack.ca/accepter-invitation";
+
+  const {
+    data: nouveauLien,
+    error: erreurNouveauLien,
+  } =
+    await supabaseAdmin.auth.admin.generateLink({
+      type: "recovery",
+      email: courriel,
+      options: {
+        redirectTo,
+      },
+    });
+
+  if (erreurNouveauLien) {
+    throw erreurNouveauLien;
+  }
+
+  const lienInvitation =
+    nouveauLien.properties?.action_link;
+
+  if (!lienInvitation) {
+    return reponseErreur(
+      "Le nouveau lien d'invitation n'a pas pu être généré.",
+      500
+    );
+  }
+
+  const {
+    data: organisation,
+    error: erreurOrganisation,
+  } = await supabaseAdmin
+    .from("organisation")
+    .select(
+      "nom_affichage, nom_legal, courriel, telephone, logo_url"
+    )
+    .limit(1)
+    .maybeSingle();
+
+  if (erreurOrganisation) {
+    throw erreurOrganisation;
+  }
+
+  const resultatCourriel =
+    await envoyerCourrielInvitation({
+      resendApiKey,
+      courriel,
+      prenom,
+      lienInvitation,
+      organisation,
+    });
+
+  return reponseSucces({
+    success: true,
+    type: "invitation_renvoyee",
+    message:
+      "L'invitation du deuxième parent a été renvoyée.",
+    utilisateur_id:
+      utilisateurExistant.id,
+    email_id:
+      resultatCourriel?.id ?? null,
+  });
+}
+
+if (utilisateurExistant) {
+  const resultat =
+    await rattacherUtilisateurExistant({
+      supabaseAdmin,
+      utilisateurId:
+        utilisateurExistant.id,
+      familleId:
+        parentInviteur.famille_id,
+      prenom,
+      nom,
+      telephone,
+      lien,
+    });
+
+  return reponseSucces(resultat);
+}
 
     const redirectTo = "https://www.volleyballattack.ca/accepter-invitation";
 

@@ -183,6 +183,7 @@ Deno.serve(async (req) => {
     }
 
     const corps = await req.json();
+    const action = String(corps?.action ?? "inviter").trim().toLowerCase();
     const modeTest = corps?.mode_test === true;
     const testEmail = String(corps?.test_email ?? "").trim().toLowerCase();
     const prenom = String(corps?.prenom ?? "").trim();
@@ -256,11 +257,60 @@ Deno.serve(async (req) => {
         return reponseJson({ error: "Ce compte est actuellement désactivé." }, 400);
       }
       if (profilExistant.est_entraineur === true) {
-        return reponseJson(
-          { error: "Cette personne possède déjà un accès entraîneur." },
-          400
-        );
-      }
+  if (action !== "renvoyer") {
+    return reponseJson(
+      { error: "Cette personne possède déjà un accès entraîneur." },
+      400
+    );
+  }
+
+  const redirectTo = "https://www.volleyballattack.ca/accepter-invitation";
+
+  const { data: nouveauLien, error: erreurNouveauLien } =
+    await supabaseAdmin.auth.admin.generateLink({
+      type: "recovery",
+      email: courriel,
+      options: {
+        redirectTo,
+      },
+    });
+
+  if (erreurNouveauLien) throw erreurNouveauLien;
+
+  const lienInvitation = nouveauLien.properties?.action_link;
+
+  if (!lienInvitation) {
+    return reponseJson(
+      { error: "Le nouveau lien d'invitation n'a pas pu être généré." },
+      500
+    );
+  }
+
+  const { data: organisation, error: erreurOrganisation } =
+    await supabaseAdmin
+      .from("organisation")
+      .select("nom_affichage, nom_legal, courriel, telephone, logo_url")
+      .limit(1)
+      .maybeSingle();
+
+  if (erreurOrganisation) throw erreurOrganisation;
+
+  const resultatCourriel = await envoyerCourrielInvitation({
+    resendApiKey,
+    courriel,
+    prenom: profilExistant.prenom || prenom,
+    lienInvitation,
+    organisation,
+  });
+
+  return reponseJson({
+    success: true,
+    type: "invitation_renvoyee",
+    message: "Invitation entraîneur renvoyée.",
+    utilisateur_id: utilisateurExistant.id,
+    email_id: resultatCourriel?.id ?? null,
+  });
+}
 
       const { error: erreurActivation } = await supabaseAdmin
         .from("profils")

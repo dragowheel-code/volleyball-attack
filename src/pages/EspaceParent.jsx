@@ -49,6 +49,10 @@ function EspaceParent({ profil }) {
     messageInvitation,
     setMessageInvitation,
   ] = useState("");
+  const [
+    parentInvitationEnCoursId,
+    setParentInvitationEnCoursId,
+  ] = useState(null);
   //=========================================================//  //CONTACTS D'URGENCE//  //=========================================================//
   const [contactsUrgence, setContactsUrgence] =
     useState([]);
@@ -690,6 +694,67 @@ const [courrielParent, setCourrielParent] =
       alert(data.message || "Le deuxième parent a été ajouté.");
     }
   }
+  async function renvoyerInvitationParent(parent) {
+  const confirmation = window.confirm(
+    `Renvoyer l'invitation à ${parent.prenom} ${parent.nom} ?`
+  );
+
+  if (!confirmation) {
+    return;
+  }
+
+  setParentInvitationEnCoursId(
+  parent.parent_id
+  );
+  setMessageInvitation("");
+
+  try {
+    const { data, error } =
+      await supabase.functions.invoke(
+        "inviter-deuxieme-parent",
+        {
+          body: {
+            action: "renvoyer",
+            prenom: parent.prenom,
+            nom: parent.nom,
+            courriel: parent.courriel,
+            telephone: parent.telephone ?? "",
+          },
+        }
+      );
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data?.success) {
+      throw new Error(
+        data?.message ||
+          "Impossible de renvoyer l'invitation."
+      );
+    }
+
+    alert(
+      data?.message ||
+        "L'invitation a été renvoyée."
+    );
+
+    await chargerParentsFamille();
+  } catch (error) {
+    console.error(
+      "Erreur lors du renvoi de l'invitation :",
+      error
+    );
+
+    alert(
+      error instanceof Error
+        ? error.message
+        : "Impossible de renvoyer l'invitation."
+    );
+  } finally {
+    setParentInvitationEnCoursId(null);
+  }
+}
   //=========================================================//  //PROFIL PARENT//  //=========================================================//
 async function ouvrirProfilParent() {
   setMessageModificationProfil("");
@@ -905,29 +970,67 @@ async function enregistrerProfilParent(
               </p>
             ) : (
               <div className="liste-enfants">
-                {parentsFamille.map((parent) => (
-                  <article
-                    key={parent.parent_id}
-                    className="fiche-enfant"
-                  >
-                    <h3>
-                      {parent.prenom}{" "}
-                      {parent.nom}
-                    </h3>
-                    {parent.est_moi && (
-                      <p>
-                        <strong>
-                          Vous
-                        </strong>
-                      </p>
-                    )}
-                    {parent.telephone && (
-                      <p>
-                        {parent.telephone}
-                      </p>
-                    )}
-                  </article>
-                ))}
+                {parentsFamille.map((parent) => {
+  const invitationEnAttente =
+    !parent.est_moi &&
+    !parent.compte_active;
+
+  return (
+    <article
+      key={parent.parent_id}
+      className="fiche-enfant"
+    >
+      <div>
+        <h3>
+          {parent.prenom}{" "}
+          {parent.nom}
+        </h3>
+
+        {parent.est_moi && (
+          <p>
+            <strong>Vous</strong>
+          </p>
+        )}
+
+        {invitationEnAttente && (
+          <p>
+            <strong>
+              Invitation en attente
+            </strong>
+          </p>
+        )}
+
+        {parent.courriel && (
+          <p>{parent.courriel}</p>
+        )}
+
+        {parent.telephone && (
+          <p>{parent.telephone}</p>
+        )}
+      </div>
+
+      {invitationEnAttente && (
+        <div className="actions-fiche">
+          <button
+            type="button"
+            className="bouton bouton-secondaire"
+            disabled={parentInvitationEnCoursId === parent.parent_id}
+            onClick={() =>
+              renvoyerInvitationParent(
+                parent
+              )
+            }
+          >
+            {parentInvitationEnCoursId === parent.parent_id
+              ? "Envoi..."
+              : "Renvoyer l'invitation"
+            }
+           </button>
+        </div>
+      )}
+    </article>
+  );
+})}
               </div>
             )}
           </article>

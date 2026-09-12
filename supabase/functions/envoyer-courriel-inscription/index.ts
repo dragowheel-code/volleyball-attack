@@ -85,7 +85,10 @@ Deno.serve(async (req) => {
     return json({ error: "Session invalide." }, 401);
   }
 
-  let body: { inscription_id?: string };
+  let body: {
+    inscription_id?: string;
+    origine?: string;
+  };
 
   try {
     body = await req.json();
@@ -94,24 +97,10 @@ Deno.serve(async (req) => {
   }
 
   const inscriptionId = body.inscription_id?.trim();
+  const origine = body.origine?.trim() || "";
 
   if (!inscriptionId) {
     return json({ error: "inscription_id est requis." }, 400);
-  }
-
-  const { data: parent, error: parentError } = await admin
-    .from("parents")
-    .select("id, profil_id")
-    .eq("profil_id", user.id)
-    .maybeSingle();
-
-  if (parentError) {
-    console.error(parentError);
-    return json({ error: "Impossible de vérifier le compte parent." }, 500);
-  }
-
-  if (!parent) {
-    return json({ error: "Compte parent introuvable." }, 403);
   }
 
   const { data: inscription, error: inscriptionError } = await admin
@@ -150,16 +139,99 @@ Deno.serve(async (req) => {
     return json({ error: "Inscription introuvable." }, 404);
   }
 
-  if (inscription.parent_createur_id !== parent.id) {
-    return json({ error: "Accès refusé à cette inscription." }, 403);
-  }
+  const { data: parentConnecte, error: parentConnecteError } = await admin
+  .from("parents")
+  .select("id")
+  .eq("profil_id", user.id)
+  .maybeSingle();
 
-  if (!user.email) {
+if (parentConnecteError) {
+  console.error(parentConnecteError);
+
+  return json(
+    { error: "Impossible de vérifier le compte parent." },
+    500,
+  );
+}
+
+const estParentCreateur =
+  parentConnecte?.id === inscription.parent_createur_id;
+
+  const { data: profilConnecte, error: profilConnecteError } = await admin
+  .from("profils")
+  .select("actif, est_administrateur")
+  .eq("id", user.id)
+  .maybeSingle();
+
+if (profilConnecteError) {
+  console.error(profilConnecteError);
+
+  return json(
+    { error: "Impossible de vérifier le profil utilisateur." },
+    500,
+  );
+}
+
+const estAdministrateur =
+  profilConnecte?.actif === true &&
+  profilConnecte?.est_administrateur === true;
+
+  if (!estParentCreateur && !estAdministrateur) {
+  return json(
+    { error: "Accès refusé à cette inscription." },
+    403,
+  );
+}
+
+let courrielDestinataire = user.email ?? "";
+
+if (estAdministrateur && !estParentCreateur) {
+  const { data: parentCreateur, error: parentCreateurError } = await admin
+    .from("parents")
+    .select("profil_id")
+    .eq("id", inscription.parent_createur_id)
+    .maybeSingle();
+
+  if (parentCreateurError) {
+    console.error(parentCreateurError);
+
     return json(
-      { error: "Aucune adresse courriel associée au compte." },
-      400,
+      { error: "Impossible de charger le parent de l'inscription." },
+      500,
     );
   }
+
+  if (!parentCreateur?.profil_id) {
+    return json(
+      { error: "Parent associé à l'inscription introuvable." },
+      404,
+    );
+  }
+
+  const {
+    data: { user: parentUser },
+    error: parentUserError,
+  } = await admin.auth.admin.getUserById(
+    parentCreateur.profil_id,
+  );
+
+  if (parentUserError) {
+    console.error(parentUserError);
+
+    return json(
+      { error: "Impossible de charger le compte du parent." },
+      500,
+    );
+  }
+
+  courrielDestinataire = parentUser?.email ?? "";
+}
+if (!courrielDestinataire) {
+  return json(
+    { error: "Aucune adresse courriel associée au parent." },
+    400,
+  );
+}
 
   const enfant = Array.isArray(inscription.enfants)
     ? inscription.enfants[0]
@@ -277,12 +349,20 @@ Deno.serve(async (req) => {
   let paymentText: string[] = [];
 
   if (inscription.statut === "en_attente_paiement") {
+  if (origine === "validation_conditionnelle") {
+    sujet = `Inscription acceptée — ${nomCours}`;
+    titre = "Inscription acceptée";
+    message =
+      "L'inscription conditionnelle a été acceptée. La place est maintenant réservée. Vous pouvez procéder au paiement selon les instructions ci-dessous.";
+  } else {
     sujet = `Confirmation d'inscription — ${nomCours}`;
     titre = "Inscription reçue";
     message =
       "La place est réservée. Votre inscription sera confirmée selon le processus de paiement prévu.";
-    accent = "#3d6b49";
-    fondAccent = "#eef7f0";
+  }
+
+  accent = "#3d6b49";
+  fondAccent = "#eef7f0";
 
     const lignesPaiement = paiements
       .filter((paiement) => paiement.statut === "a_recevoir")
@@ -475,7 +555,7 @@ Deno.serve(async (req) => {
 
   const resendPayload: Record<string, unknown> = {
     from: `${nomOrganisation} <noreply@volleyballattack.ca>`,
-    to: [user.email],
+    to: [courrielDestinataire],
     subject: sujet,
     html: emailHtml,
     text: emailText,
