@@ -183,7 +183,7 @@ Deno.serve(async (req) => {
     }
 
     const corps = await req.json();
-    const action = String(corps?.action ?? "inviter").trim().toLowerCase();
+    const action = String(corps?.action ?? "inviter").trim().toLowerCase(); 
     const modeTest = corps?.mode_test === true;
     const testEmail = String(corps?.test_email ?? "").trim().toLowerCase();
     const prenom = String(corps?.prenom ?? "").trim();
@@ -256,17 +256,19 @@ Deno.serve(async (req) => {
       if (profilExistant.actif !== true) {
         return reponseJson({ error: "Ce compte est actuellement désactivé." }, 400);
       }
-      if (profilExistant.est_entraineur === true) {
-  if (action !== "renvoyer") {
-    return reponseJson(
-      { error: "Cette personne possède déjà un accès entraîneur." },
-      400
-    );
-  }
+      if (profilExistant.est_entraineur === true &&
+          action !== "renvoyer"
+        ) {
+        return reponseJson(
+          { error: "Cette personne possède déjà un accès entraîneur." },
+          400
+        );
+      }
+if (action === "renvoyer") {
+  const redirectTo =
+    "https://www.volleyballattack.ca/accepter-invitation";
 
-  const redirectTo = "https://www.volleyballattack.ca/accepter-invitation";
-
-  const { data: nouveauLien, error: erreurNouveauLien } =
+  const { data: lienRecovery, error: erreurLienRecovery } =
     await supabaseAdmin.auth.admin.generateLink({
       type: "recovery",
       email: courriel,
@@ -275,9 +277,9 @@ Deno.serve(async (req) => {
       },
     });
 
-  if (erreurNouveauLien) throw erreurNouveauLien;
+  if (erreurLienRecovery) throw erreurLienRecovery;
 
-  const lienInvitation = nouveauLien.properties?.action_link;
+  const lienInvitation = lienRecovery.properties?.action_link;
 
   if (!lienInvitation) {
     return reponseJson(
@@ -289,7 +291,9 @@ Deno.serve(async (req) => {
   const { data: organisation, error: erreurOrganisation } =
     await supabaseAdmin
       .from("organisation")
-      .select("nom_affichage, nom_legal, courriel, telephone, logo_url")
+      .select(
+        "nom_affichage, nom_legal, courriel, telephone, logo_url"
+      )
       .limit(1)
       .maybeSingle();
 
@@ -311,7 +315,6 @@ Deno.serve(async (req) => {
     email_id: resultatCourriel?.id ?? null,
   });
 }
-
       const { error: erreurActivation } = await supabaseAdmin
         .from("profils")
         .update({
