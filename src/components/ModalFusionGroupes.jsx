@@ -288,8 +288,7 @@ chargerEntraineursFusion(
   setEntraineursSelectionnes([]);
 }
           setPrevisualisation(null);
-          setErreur("");
-        }}
+          }}
       >
         <option value="">Sélectionner un groupe</option>
 
