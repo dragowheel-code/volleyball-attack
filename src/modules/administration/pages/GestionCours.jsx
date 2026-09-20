@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import ModalCours from "../../../components/ModalCours";
+import ModalFusionGroupes from "../../../components/ModalFusionGroupes";
 import "./GestionCours.css";
 
 function GestionCours() {
@@ -12,6 +13,8 @@ function GestionCours() {
   const [chargement, setChargement] = useState(true);
   const [afficherModal, setAfficherModal] = useState(false);
   const [coursEnModification, setCoursEnModification] = useState(null);
+  const [afficherFusion, setAfficherFusion] = useState(false);
+  const [coursEnFusion, setCoursEnFusion] = useState(null);
 
   // =========================================================
   // CHARGEMENT
@@ -158,6 +161,15 @@ function GestionCours() {
     setAnneesScolaires(resultatAnnees.data ?? []);
     setNiveauxVolleyball(resultatNiveaux.data ?? []);
     setChargement(false);
+  }
+
+  // =========================================================
+  // FUSION COURS
+  // =========================================================
+
+  function ouvrirFusion(coursSelectionne) {
+    setCoursEnFusion(coursSelectionne);
+    setAfficherFusion(true);
   }
 
   // =========================================================
@@ -430,6 +442,18 @@ function GestionCours() {
                 <button
                   type="button"
                   className="admin-bouton admin-bouton-secondaire"
+                  onClick={() => ouvrirFusion(element)}
+                  disabled={
+                    element.inscriptions_ouvertes ||
+                    element.statistiques_groupes.length < 2
+                  }
+                >
+                  Fusionner des groupes
+                </button>
+
+                <button
+                  type="button"
+                  className="admin-bouton admin-bouton-secondaire"
                   onClick={() =>
                     ouvrirModification(element)
                   }
@@ -440,6 +464,22 @@ function GestionCours() {
             </article>
           ))}
         </div>
+      )}
+
+      {afficherFusion && coursEnFusion && (
+        <ModalFusionGroupes
+          cours={coursEnFusion}
+          gymnases={gymnases}
+          onFusionTerminee={async () => {
+           setAfficherFusion(false);
+           setCoursEnFusion(null);
+           await chargerDonnees();
+          }}
+          onFermer={() => {
+            setAfficherFusion(false);
+            setCoursEnFusion(null);
+          }}
+        />
       )}
 
       {afficherModal && (

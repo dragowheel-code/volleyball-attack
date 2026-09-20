@@ -186,21 +186,70 @@ function GestionInscriptions() {
         groupe,
       ])
     );
-    const inscriptionsCompletees =
-      (data ?? []).map((inscription) => {
-        const groupe = groupesParId.get(
-          inscription.groupe_id
-        );
-        const coursItem = groupe
-          ? coursParId.get(groupe.cours_id)
-          : null;
-        return {
-          ...inscription,
-          groupe,
-          cours: coursItem,
-        };
-      });
-    setInscriptions(inscriptionsCompletees);
+    const { data: inscriptionsAbsorbees, error: erreurInscriptionsAbsorbees } =
+  await supabase
+    .from("fusions_groupes_inscriptions")
+    .select("inscription_absorbee_id")
+    .in(
+      "inscription_absorbee_id",
+      (data ?? []).map((inscription) => inscription.id)
+    );
+
+if (erreurInscriptionsAbsorbees) {
+  console.error(erreurInscriptionsAbsorbees);
+  setErreur(
+    "Impossible de vérifier les inscriptions absorbées lors des fusions."
+  );
+  setChargement(false);
+  return;
+}
+
+const idsInscriptionsAbsorbees = new Set(
+  (inscriptionsAbsorbees ?? []).map(
+    (element) => element.inscription_absorbee_id
+  )
+);
+    const inscriptionsCompletees = await Promise.all(
+  (data ?? []).map(async (inscription) => {
+    const groupe = groupesParId.get(
+      inscription.groupe_id
+    );
+
+    const coursItem = groupe
+      ? coursParId.get(groupe.cours_id)
+      : null;
+
+    const {
+      data: situationPaiement,
+      error: erreurSituationPaiement,
+    } = await supabase.rpc(
+      "calculer_paiement_inscription",
+      {
+        p_inscription_id: inscription.id,
+      }
+    );
+
+    if (erreurSituationPaiement) {
+      console.error(
+        "Impossible de calculer la situation financière :",
+        erreurSituationPaiement
+      );
+    }
+
+    const situationFinanciere =
+      situationPaiement?.[0] ?? null;
+
+    return {
+      ...inscription,
+      groupe,
+      cours: coursItem,
+      situationFinanciere,
+      estAbsorbee: idsInscriptionsAbsorbees.has(inscription.id),
+    };
+  })
+);
+
+setInscriptions(inscriptionsCompletees);
     setChargement(false);
   }
   const inscriptionsFiltrees = useMemo(() => {
@@ -347,11 +396,17 @@ function GestionInscriptions() {
           item.groupe_id === inscription.groupe_id &&
           item.statut === "liste_attente"
       )
-      .sort(
-        (a, b) =>
-          new Date(a.date_inscription).getTime() -
-          new Date(b.date_inscription).getTime()
-      );
+      .sort((a, b) => {
+  const differenceDate =
+    new Date(a.date_inscription).getTime() -
+    new Date(b.date_inscription).getTime();
+
+  if (differenceDate !== 0) {
+    return differenceDate;
+  }
+
+  return a.id.localeCompare(b.id);
+});
     return inscriptionsAttenteGroupe[0]?.id === inscription.id;
   }
   function groupeAUnePlaceDisponible(groupeId) {
@@ -504,11 +559,19 @@ function GestionInscriptions() {
     if (!inscription?.id) {
       return;
     }
-    const montantRecu = obtenirMontantRecu(inscription);
+    const montantRecu = Number(
+  inscription.situationFinanciere?.montant_recu ?? 0
+);
     if (montantRecu <= 0) {
       return;
     }
-    const montantParDefaut = montantRecu.toFixed(2);
+    const montantParDefaut = (
+  inscription.statut === "annulee"
+    ? montantRecu
+    : Number(
+        inscription.situationFinanciere?.montant_a_rembourser ?? 0
+      )
+).toFixed(2);
     const montantSaisi = window.prompt(
       "Montant remboursé :",
       montantParDefaut
@@ -528,6 +591,19 @@ function GestionInscriptions() {
       );
       return;
     }
+    if (
+      inscription.statut !== "annulee" &&
+      montantRembourse >
+      Number(
+      inscription.situationFinanciere?.montant_a_rembourser ?? 0
+      )
+    ) {
+      setErreur(
+        "Le remboursement ne peut pas dépasser le trop-perçu."
+      );
+      return;
+    }
+
     const note =
       window.prompt(
         "Note administrative facultative pour ce remboursement :",
@@ -919,7 +995,13 @@ function GestionInscriptions() {
                               
                               {inscription.statut !== "annulee" &&
                               inscription.statut !== "liste_attente" &&
-                              paiementARecevoir && (
+                              paiementARecevoir &&
+Number(
+  inscription.situationFinanciere?.solde_a_recevoir ?? 0
+) > 0 &&
+Number(
+  inscription.situationFinanciere?.montant_a_rembourser ?? 0
+) <= 0 && (
                                 <button
                                   type="button"
                                   className="admin-bouton admin-bouton-primaire"
@@ -989,11 +1071,17 @@ function GestionInscriptions() {
                                     : "Annuler l'inscription"}
                                 </button>
                               )}
-                              {inscription.statut ===
-                                "annulee" &&
-                              montantRecu > 0 &&
-                              Number(inscription.montant_rembourse ?? 0) <
-                                montantRecu && (
+                              {!inscription.estAbsorbee && (
+  Number(
+    inscription.situationFinanciere?.montant_a_rembourser ?? 0
+  ) > 0 ||
+  (
+    inscription.statut === "annulee" &&
+    Number(
+      inscription.situationFinanciere?.montant_recu ?? 0
+    ) > 0
+  )
+) && (
                                   <button
                                     type="button"
                                     className="admin-bouton admin-bouton-primaire"
@@ -1014,10 +1102,11 @@ function GestionInscriptions() {
                                   </button>
                                 )}
                               {inscription.statut ===
-                                "annulee" &&
+  "annulee" &&
+(inscription.estAbsorbee ||
                               (montantRecu <= 0 ||
                                 Number(inscription.montant_rembourse ?? 0) >=
-                                  montantRecu) && (
+                                  montantRecu)) && (
                                   <span className="gestion-inscriptions-pas-action">
                                     —
                                   </span>
