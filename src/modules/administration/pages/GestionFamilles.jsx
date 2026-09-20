@@ -86,9 +86,17 @@ function GestionFamilles() {
       if (!terme) {
         return true;
       }
-      return String(famille.famille_id)
-        .toLowerCase()
-        .includes(terme);
+      return (
+  String(famille.famille_id)
+    .toLowerCase()
+    .includes(terme) ||
+  String(famille.nom_famille ?? "")
+    .toLowerCase()
+    .includes(terme) ||
+  String(famille.noms_enfants ?? "")
+    .toLowerCase()
+    .includes(terme)
+);
     });
   }, [familles, recherche, filtre]);
   async function ouvrirFamille(familleId) {
