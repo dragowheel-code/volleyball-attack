@@ -53,7 +53,7 @@ function GestionInscriptions() {
         id,
         nom,
         date_debut,
-        date_fin,
+        date_fin
         `)
       .eq("active", true)
       .maybeSingle();
