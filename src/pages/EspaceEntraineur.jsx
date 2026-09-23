@@ -10,6 +10,7 @@ function EspaceEntraineur({ profil }) {
   const [vueGroupe, setVueGroupe] = useState("accueil");
 
   const [joueuses, setJoueuses] = useState([]);
+  const [joueuseSelectionnee, setJoueuseSelectionnee] = useState(null);
   const [seances, setSeances] = useState([]);
   const [seanceSelectionnee, setSeanceSelectionnee] = useState(null);
   const [presences, setPresences] = useState([]);
@@ -131,6 +132,7 @@ function EspaceEntraineur({ profil }) {
     setVueGroupe("accueil");
 
     setJoueuses([]);
+    setJoueuseSelectionnee(null);
     setSeances([]);
     setSeanceSelectionnee(null);
     setPresences([]);
@@ -152,6 +154,7 @@ function EspaceEntraineur({ profil }) {
     setVueGroupe("accueil");
 
     setJoueuses([]);
+    setJoueuseSelectionnee(null);
     setSeances([]);
     setSeanceSelectionnee(null);
     setPresences([]);
@@ -170,6 +173,7 @@ function EspaceEntraineur({ profil }) {
 
   function retourGestionGroupe() {
     setVueGroupe("accueil");
+    setJoueuseSelectionnee(null);
     setSeanceSelectionnee(null);
     setPresences([]);
     setAfficherCreationSeance(false);
@@ -188,6 +192,7 @@ function EspaceEntraineur({ profil }) {
     }
 
     setVueGroupe("joueuses");
+    setJoueuseSelectionnee(null);
     setChargementJoueuses(true);
     setErreurJoueuses("");
     setJoueuses([]);
@@ -215,6 +220,13 @@ function EspaceEntraineur({ profil }) {
 
     setJoueuses(data ?? []);
     setChargementJoueuses(false);
+  }
+  function ouvrirFicheJoueuse(joueuse) {
+    setJoueuseSelectionnee(joueuse);
+  }
+
+  function fermerFicheJoueuse() {
+    setJoueuseSelectionnee(null);
   }
 
   async function ouvrirSeances() {
@@ -807,9 +819,13 @@ function EspaceEntraineur({ profil }) {
                           return (
                             <tr key={joueuse.enfant_id}>
                               <td>
-                                <strong>
+                                <button
+                                  type="button"
+                                  className="espace-entraineur-joueuse-lien"
+                                  onClick={() => ouvrirFicheJoueuse(joueuse)}
+                                >
                                   {joueuse.prenom} {joueuse.nom}
-                                </strong>
+                                </button>
                               </td>
 
                               <td>
@@ -829,33 +845,32 @@ function EspaceEntraineur({ profil }) {
                                   {consentement.texte}
                                 </span>
                               </td>
-<td>
-  {Array.isArray(joueuse.parents) &&
-  joueuse.parents.length > 0 ? (
-    <div>
-      {joueuse.parents.map((parent, index) => (
-        <div
-          key={`${joueuse.enfant_id}-parent-${index}`}
-        >
-          <div>
-            {parent.prenom} {parent.nom}
-          </div>
-
-          {parent.telephone && (
-            <a
-              href={`tel:${parent.telephone}`}
-              className="espace-entraineur-telephone"
-            >
-              {parent.telephone}
-            </a>
-          )}
-        </div>
-      ))}
-    </div>
-  ) : (
-    "—"
-  )}
-</td>
+                              <td>
+                                {Array.isArray(joueuse.parents) &&
+                                joueuse.parents.length > 0 ? (
+                                  <div>
+                                    {joueuse.parents.map((parent, index) => (
+                                      <div
+                                        key={`${joueuse.enfant_id}-parent-${index}`}
+                                      >
+                                        <div>
+                                          {parent.prenom} {parent.nom}
+                                        </div>
+                                        {parent.telephone && (
+                                          <a
+                                            href={`tel:${parent.telephone}`}
+                                            className="espace-entraineur-telephone"
+                                          >
+                                            {parent.telephone}
+                                          </a>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  "—"
+                                )}
+                              </td>
                               <td>
                                 {joueuse.contact_urgence_prenom ||
                                 joueuse.contact_urgence_nom ? (
@@ -914,6 +929,126 @@ function EspaceEntraineur({ profil }) {
                   </p>
                 </div>
               )}
+
+            {joueuseSelectionnee && (
+              <div
+                className="espace-entraineur-modal-fond"
+                onMouseDown={fermerFicheJoueuse}
+              >
+                <div
+                  className="espace-entraineur-modal"
+                  onMouseDown={(event) => event.stopPropagation()}
+                >
+                  <div className="espace-entraineur-modal-entete">
+                    <h2>
+                      {joueuseSelectionnee.prenom}{" "}
+                      {joueuseSelectionnee.nom}
+                    </h2>
+                    <button
+                      type="button"
+                      className="espace-entraineur-modal-fermer"
+                      onClick={fermerFicheJoueuse}
+                      aria-label="Fermer"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <div className="espace-entraineur-fiche">
+                    <div>
+                      <strong>Date de naissance</strong>
+                      <p>{formaterDate(joueuseSelectionnee.date_naissance)}</p>
+                    </div>
+
+                    <div>
+                      <strong>Sexe</strong>
+                      <p>{joueuseSelectionnee.sexe || "—"}</p>
+                    </div>
+
+                    <div>
+                      <strong>Année scolaire</strong>
+                      <p>{joueuseSelectionnee.annee_scolaire_nom || "—"}</p>
+                    </div>
+
+                    <div>
+                      <strong>Photos / vidéos</strong>
+                      <p>
+                        {formaterConsentementPhotos(
+                          joueuseSelectionnee.consentement_photos_videos
+                        ).texte}
+                      </p>
+                    </div>
+
+                    <div className="espace-entraineur-fiche-section">
+                      <strong>Parent(s)</strong>
+                      {Array.isArray(joueuseSelectionnee.parents) &&
+                      joueuseSelectionnee.parents.length > 0 ? (
+                        joueuseSelectionnee.parents.map((parent, index) => (
+                          <div
+                            key={`fiche-parent-${index}`}
+                            className="espace-entraineur-fiche-parent"
+                          >
+                            <p>
+                              {parent.prenom} {parent.nom}
+                            </p>
+                            {parent.telephone ? (
+                              <a
+                                href={`tel:${parent.telephone}`}
+                                className="espace-entraineur-telephone"
+                              >
+                                {parent.telephone}
+                              </a>
+                            ) : (
+                              <p>—</p>
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p>—</p>
+                      )}
+                    </div>
+
+                    <div className="espace-entraineur-fiche-section">
+                      <strong>Contact d'urgence</strong>
+                      <p>
+                        {joueuseSelectionnee.contact_urgence_prenom ||
+                        joueuseSelectionnee.contact_urgence_nom
+                          ? `${joueuseSelectionnee.contact_urgence_prenom ?? ""} ${
+                              joueuseSelectionnee.contact_urgence_nom ?? ""
+                            }`.trim()
+                          : "—"}
+                      </p>
+
+                      {joueuseSelectionnee.contact_urgence_lien && (
+                        <p>{joueuseSelectionnee.contact_urgence_lien}</p>
+                      )}
+
+                      {joueuseSelectionnee.contact_urgence_telephone && (
+                        <p>
+                          <a
+                            href={`tel:${joueuseSelectionnee.contact_urgence_telephone}`}
+                            className="espace-entraineur-telephone"
+                          >
+                            {joueuseSelectionnee.contact_urgence_telephone}
+                          </a>
+                        </p>
+                      )}
+
+                      {joueuseSelectionnee.contact_urgence_telephone_secondaire && (
+                        <p>
+                          <a
+                            href={`tel:${joueuseSelectionnee.contact_urgence_telephone_secondaire}`}
+                            className="espace-entraineur-telephone"
+                          >
+                            {joueuseSelectionnee.contact_urgence_telephone_secondaire}
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
         </main>
       );

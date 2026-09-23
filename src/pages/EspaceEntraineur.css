@@ -463,3 +463,174 @@
     width: 100%;
   }
 }
+
+/* Fiche détaillée d’une joueuse */
+
+.espace-entraineur-joueuse-lien {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1d4ed8;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.espace-entraineur-joueuse-lien:hover {
+  text-decoration: underline;
+}
+
+.espace-entraineur-joueuse-lien:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.espace-entraineur-modal-fond {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(17, 24, 39, 0.58);
+}
+
+.espace-entraineur-modal {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.22);
+}
+
+.espace-entraineur-modal-entete {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.espace-entraineur-modal-entete h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.espace-entraineur-modal-fermer {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 1.65rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.espace-entraineur-modal-fermer:hover {
+  background: #e5e7eb;
+}
+
+.espace-entraineur-fiche {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 24px;
+}
+
+.espace-entraineur-fiche > div {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f9fafb;
+}
+
+.espace-entraineur-fiche strong {
+  display: block;
+  margin-bottom: 7px;
+  color: #6b7280;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.espace-entraineur-fiche p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.espace-entraineur-fiche-section {
+  grid-column: 1 / -1;
+}
+
+.espace-entraineur-fiche-parent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.espace-entraineur-fiche-parent:first-of-type {
+  padding-top: 2px;
+}
+
+.espace-entraineur-fiche-parent:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.espace-entraineur-fiche-section > p + p {
+  margin-top: 5px;
+}
+
+.espace-entraineur-fiche .espace-entraineur-telephone {
+  color: #1d4ed8;
+}
+
+@media (max-width: 700px) {
+  .espace-entraineur-modal-fond {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .espace-entraineur-modal {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 18px 18px 0 0;
+  }
+
+  .espace-entraineur-modal-entete {
+    padding: 18px 20px;
+  }
+
+  .espace-entraineur-fiche {
+    grid-template-columns: 1fr;
+    padding: 18px;
+  }
+
+  .espace-entraineur-fiche-section {
+    grid-column: auto;
+  }
+
+  .espace-entraineur-fiche-parent {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
