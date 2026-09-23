@@ -790,6 +790,7 @@ function EspaceEntraineur({ profil }) {
                           <th>Sexe</th>
                           <th>Année scolaire</th>
                           <th>Photos / vidéos</th>
+                          <th>Parent(s)</th>
                           <th>Contact d'urgence</th>
                           <th>Lien</th>
                           <th>Téléphone</th>
@@ -828,7 +829,33 @@ function EspaceEntraineur({ profil }) {
                                   {consentement.texte}
                                 </span>
                               </td>
+<td>
+  {Array.isArray(joueuse.parents) &&
+  joueuse.parents.length > 0 ? (
+    <div>
+      {joueuse.parents.map((parent, index) => (
+        <div
+          key={`${joueuse.enfant_id}-parent-${index}`}
+        >
+          <div>
+            {parent.prenom} {parent.nom}
+          </div>
 
+          {parent.telephone && (
+            <a
+              href={`tel:${parent.telephone}`}
+              className="espace-entraineur-telephone"
+            >
+              {parent.telephone}
+            </a>
+          )}
+        </div>
+      ))}
+    </div>
+  ) : (
+    "—"
+  )}
+</td>
                               <td>
                                 {joueuse.contact_urgence_prenom ||
                                 joueuse.contact_urgence_nom ? (

@@ -295,6 +295,21 @@ function GestionCours() {
       )?.nom ?? "Saison inconnue"
     );
   }
+  function inscriptionsEncoreOuvertes(element) {
+  if (!element.inscriptions_ouvertes) {
+    return false;
+  }
+
+  const saison = saisons.find(
+    (saisonItem) => saisonItem.id === element.saison_id
+  );
+
+  if (!saison?.inscriptions_fin) {
+    return true;
+  }
+
+  return new Date() < new Date(saison.inscriptions_fin);
+}
 
   // =========================================================
   // AFFICHAGE
@@ -444,7 +459,7 @@ function GestionCours() {
                   className="admin-bouton admin-bouton-secondaire"
                   onClick={() => ouvrirFusion(element)}
                   disabled={
-                    element.inscriptions_ouvertes ||
+                    inscriptionsEncoreOuvertes(element) ||
                     element.statistiques_groupes.length < 2
                   }
                 >
