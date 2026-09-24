@@ -38,6 +38,12 @@ function GestionInscriptions() {
     useState(null);
   const [validationEnCours, setValidationEnCours] =
     useState(null);
+  const [inscriptionTransfert, setInscriptionTransfert] = useState(null);
+  const [groupesTransfert, setGroupesTransfert] = useState([]);
+  const [groupeDestinationId, setGroupeDestinationId] = useState("");
+  const [previsualisationTransfert, setPrevisualisationTransfert] = useState(null);
+  const [chargementTransfert, setChargementTransfert] = useState(false);
+  const [transfertEnCours, setTransfertEnCours] = useState(false);
   useEffect(() => {
     chargerInscriptions();
   }, []);
@@ -645,6 +651,197 @@ setInscriptions(inscriptionsCompletees);
     setRemboursementEnCours(null);
     await chargerInscriptions();
   }
+  async function ouvrirTransfert(inscription) {
+    if (!inscription?.id || !saisonActive?.id) {
+      return;
+    }
+
+    setErreur("");
+    setInscriptionTransfert(inscription);
+    setGroupesTransfert([]);
+    setGroupeDestinationId("");
+    setPrevisualisationTransfert(null);
+    setChargementTransfert(true);
+
+    const { data: coursDestination, error: erreurCoursDestination } =
+      await supabase
+        .from("cours")
+        .select("id, nom")
+        .eq("saison_id", saisonActive.id)
+        .eq("actif", true)
+        .order("nom", { ascending: true });
+
+    if (erreurCoursDestination) {
+      console.error(erreurCoursDestination);
+      setErreur("Impossible de charger les cours de destination.");
+      setChargementTransfert(false);
+      return;
+    }
+
+    const idsCoursDestination = (coursDestination ?? []).map(
+      (coursItem) => coursItem.id
+    );
+
+    if (idsCoursDestination.length === 0) {
+      setChargementTransfert(false);
+      return;
+    }
+
+    const { data: groupesDestination, error: erreurGroupesDestination } =
+      await supabase
+        .from("groupes")
+        .select("id, nom, capacite, ordre, cours_id, actif, fusionne_vers_id")
+        .in("cours_id", idsCoursDestination)
+        .eq("actif", true)
+        .is("fusionne_vers_id", null)
+        .order("ordre", { ascending: true });
+
+    if (erreurGroupesDestination) {
+      console.error(erreurGroupesDestination);
+      setErreur("Impossible de charger les groupes de destination.");
+      setChargementTransfert(false);
+      return;
+    }
+
+    const coursParId = new Map(
+      (coursDestination ?? []).map((coursItem) => [coursItem.id, coursItem])
+    );
+
+    const destinations = (groupesDestination ?? [])
+      .filter((groupe) => groupe.id !== inscription.groupe_id)
+      .map((groupe) => ({
+        ...groupe,
+        cours: coursParId.get(groupe.cours_id) ?? null,
+      }))
+      .sort((a, b) => {
+        const comparaisonCours = (a.cours?.nom ?? "").localeCompare(
+          b.cours?.nom ?? "",
+          "fr"
+        );
+        if (comparaisonCours !== 0) {
+          return comparaisonCours;
+        }
+        return (a.nom ?? "").localeCompare(b.nom ?? "", "fr");
+      });
+
+    setGroupesTransfert(destinations);
+    setChargementTransfert(false);
+  }
+
+  function fermerTransfert() {
+    if (chargementTransfert || transfertEnCours) {
+      return;
+    }
+    setInscriptionTransfert(null);
+    setGroupesTransfert([]);
+    setGroupeDestinationId("");
+    setPrevisualisationTransfert(null);
+  }
+
+  async function previsualiserTransfert() {
+    if (!inscriptionTransfert?.id || !groupeDestinationId) {
+      return;
+    }
+
+    setErreur("");
+    setPrevisualisationTransfert(null);
+    setChargementTransfert(true);
+
+    const { data, error: erreurPrevisualisation } = await supabase.rpc(
+      "previsualiser_transfert_inscription_admin",
+      {
+        p_inscription_id: inscriptionTransfert.id,
+        p_groupe_destination_id: groupeDestinationId,
+      }
+    );
+
+    if (erreurPrevisualisation) {
+      console.error(erreurPrevisualisation);
+      setErreur(
+        erreurPrevisualisation.message ||
+          "Impossible de prévisualiser le transfert."
+      );
+      setChargementTransfert(false);
+      return;
+    }
+
+    setPrevisualisationTransfert(data?.[0] ?? null);
+    setChargementTransfert(false);
+  }
+
+  async function confirmerTransfert() {
+    if (
+      !inscriptionTransfert?.id ||
+      !groupeDestinationId ||
+      !previsualisationTransfert ||
+      transfertEnCours
+    ) {
+      return;
+    }
+
+    const nomEnfant = `${inscriptionTransfert.enfants?.prenom ?? ""} ${
+      inscriptionTransfert.enfants?.nom ?? ""
+    }`.trim();
+
+    const difference = Number(
+      previsualisationTransfert.difference_prix ?? 0
+    );
+
+    let incidenceFinanciere = "Aucune différence de prix.";
+
+    if (difference > 0) {
+      incidenceFinanciere = `${formaterMontant(
+        difference
+      )} supplémentaires seront à facturer selon la situation financière de l'inscription.`;
+    } else if (difference < 0) {
+      incidenceFinanciere = `Le nouveau cours coûte ${formaterMontant(
+        Math.abs(difference)
+      )} de moins. Un remboursement pourra être requis selon les montants déjà reçus.`;
+    }
+
+    const confirmation = window.confirm(
+      `Confirmer le transfert de ${nomEnfant || "cet enfant"} ?\n\n` +
+        `${previsualisationTransfert.cours_source_nom} — ${
+          previsualisationTransfert.groupe_source_nom
+        }\n→ ${previsualisationTransfert.cours_destination_nom} — ${
+          previsualisationTransfert.groupe_destination_nom
+        }\n\n${incidenceFinanciere}`
+    );
+
+    if (!confirmation) {
+      return;
+    }
+
+    setErreur("");
+    setTransfertEnCours(true);
+
+    const { error: erreurTransfert } = await supabase.rpc(
+      "transferer_inscription_groupe_admin",
+      {
+        p_inscription_id: inscriptionTransfert.id,
+        p_groupe_destination_id: groupeDestinationId,
+        p_note: null,
+      }
+    );
+
+    if (erreurTransfert) {
+      console.error(erreurTransfert);
+      setErreur(
+        erreurTransfert.message ||
+          "Impossible d'effectuer le transfert."
+      );
+      setTransfertEnCours(false);
+      return;
+    }
+
+    setTransfertEnCours(false);
+    setInscriptionTransfert(null);
+    setGroupesTransfert([]);
+    setGroupeDestinationId("");
+    setPrevisualisationTransfert(null);
+    await chargerInscriptions();
+  }
+
   async function confirmerPaiement() {
     if (!inscriptionPaiement) {
       return;
@@ -1053,6 +1250,17 @@ Number(
                                   </button>
                                 )}
                               {inscription.statut !== "annulee" &&
+                              inscription.statut !== "en_attente_validation" &&
+                              !inscription.estAbsorbee && (
+                                <button
+                                  type="button"
+                                  className="admin-bouton admin-bouton-secondaire"
+                                  onClick={() => ouvrirTransfert(inscription)}
+                                >
+                                  Transférer
+                                </button>
+                              )}
+                              {inscription.statut !== "annulee" &&
                               inscription.statut !== "en_attente_validation" && (
                                 <button
                                   type="button"
@@ -1122,6 +1330,128 @@ Number(
             </div>
           )}
         </>
+      )}
+      {inscriptionTransfert && (
+        <div
+          className="gestion-inscriptions-modal-fond"
+          onMouseDown={fermerTransfert}
+        >
+          <div
+            className="gestion-inscriptions-modal"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <h2>Transférer l'inscription</h2>
+            <p>
+              Choisissez le nouveau groupe pour{" "}
+              <strong>
+                {inscriptionTransfert.enfants?.prenom}{" "}
+                {inscriptionTransfert.enfants?.nom}
+              </strong>
+              .
+            </p>
+            <div className="gestion-inscriptions-modal-info">
+              <span>{inscriptionTransfert.cours?.nom ?? "—"}</span>
+              <span>{inscriptionTransfert.groupe?.nom ?? "—"}</span>
+              <strong>
+                Prix actuel : {formaterMontant(inscriptionTransfert.prix_facture)}
+              </strong>
+            </div>
+            <label className="gestion-inscriptions-champ">
+              <span>Groupe destination</span>
+              <select
+                value={groupeDestinationId}
+                onChange={(event) => {
+                  setGroupeDestinationId(event.target.value);
+                  setPrevisualisationTransfert(null);
+                }}
+                disabled={chargementTransfert}
+              >
+                <option value="">Sélectionner un groupe</option>
+                {groupesTransfert.map((groupe) => (
+                  <option key={groupe.id} value={groupe.id}>
+                    {groupe.cours?.nom ?? "Cours"} — {groupe.nom}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!chargementTransfert && groupesTransfert.length === 0 && (
+              <p>Aucun autre groupe actif n'est disponible dans cette saison.</p>
+            )}
+            {previsualisationTransfert && (
+              <div className="gestion-inscriptions-modal-info">
+                <strong>
+                  {previsualisationTransfert.cours_source_nom} —{" "}
+                  {previsualisationTransfert.groupe_source_nom}
+                </strong>
+                <span>↓</span>
+                <strong>
+                  {previsualisationTransfert.cours_destination_nom} —{" "}
+                  {previsualisationTransfert.groupe_destination_nom}
+                </strong>
+                <span>
+                  Prix : {formaterMontant(previsualisationTransfert.prix_avant)} →{" "}
+                  {formaterMontant(previsualisationTransfert.prix_apres)}
+                </span>
+                <span>
+                  Différence :{" "}
+                  {formaterMontant(previsualisationTransfert.difference_prix)}
+                </span>
+                <span>
+                  Occupation actuelle :{" "}
+                  {previsualisationTransfert.places_occupees_destination}/
+                  {previsualisationTransfert.capacite_destination}
+                </span>
+                {previsualisationTransfert.depasse_capacite && (
+                  <strong>⚠ Le transfert dépassera la capacité du groupe.</strong>
+                )}
+                {previsualisationTransfert.avertissement_sexe && (
+                  <strong>⚠ Le sexe ne correspond pas aux critères habituels.</strong>
+                )}
+                {previsualisationTransfert.avertissement_annee_scolaire && (
+                  <strong>
+                    ⚠ L'année scolaire ne correspond pas aux critères habituels.
+                  </strong>
+                )}
+                {previsualisationTransfert.avertissement_niveau && (
+                  <strong>
+                    ⚠ Le niveau de volleyball ne correspond pas aux critères habituels.
+                  </strong>
+                )}
+              </div>
+            )}
+            <div className="gestion-inscriptions-modal-actions">
+              <button
+                type="button"
+                className="admin-bouton admin-bouton-secondaire"
+                onClick={fermerTransfert}
+                disabled={chargementTransfert || transfertEnCours}
+              >
+                Fermer
+              </button>
+              {!previsualisationTransfert ? (
+                <button
+                  type="button"
+                  className="admin-bouton admin-bouton-primaire"
+                  onClick={previsualiserTransfert}
+                  disabled={!groupeDestinationId || chargementTransfert}
+                >
+                  {chargementTransfert ? "Chargement..." : "Prévisualiser"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="admin-bouton admin-bouton-primaire"
+                  onClick={confirmerTransfert}
+                  disabled={transfertEnCours}
+                >
+                  {transfertEnCours
+                    ? "Transfert en cours..."
+                    : "Confirmer le transfert"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
       {inscriptionPaiement && (
         <div
