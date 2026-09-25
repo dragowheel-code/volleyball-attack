@@ -369,7 +369,7 @@ function GestionCours() {
                     </span>
 
                     <span className="gestion-cours-badge">
-                      {element.inscriptions_ouvertes
+                      {inscriptionsEncoreOuvertes(element)
                         ? "Inscriptions ouvertes"
                         : "Inscriptions fermées"}
                     </span>
