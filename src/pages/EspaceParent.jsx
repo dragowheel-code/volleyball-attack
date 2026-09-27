@@ -87,6 +87,18 @@ function EspaceParent({ profil }) {
   const [chargementHistoriqueDocuments, setChargementHistoriqueDocuments] =
     useState(true);
   const [erreurHistoriqueDocuments, setErreurHistoriqueDocuments] = useState("");
+  //=========================================================//  //CONSENTEMENTS À COMPLÉTER//  //=========================================================//
+  const [consentementsACompleter, setConsentementsACompleter] = useState([]);
+  const [politiquesConsentement, setPolitiquesConsentement] = useState([]);
+  const [chargementConsentements, setChargementConsentements] = useState(true);
+  const [enregistrementConsentements, setEnregistrementConsentements] = useState(false);
+  const [erreurConsentements, setErreurConsentements] = useState("");
+  const [reponsesConsentement, setReponsesConsentement] = useState({
+    code_conduite: false,
+    intervention: false,
+    photos_videos: null,
+    remboursement: false,
+  });
   //=========================================================//  //CHARGEMENT DES INSCRIPTIONS//  //=========================================================//
   const chargerDocumentsFinanciers = useCallback(async (listeInscriptions) => {
     const inscriptionsAvecPaiement = listeInscriptions.filter(
@@ -134,6 +146,129 @@ function EspaceParent({ profil }) {
     await chargerDocumentsFinanciers(listeInscriptions);
     setChargementInscriptions(false);
   }, [chargerDocumentsFinanciers]);
+  const chargerConsentementsACompleter = useCallback(async () => {
+    setChargementConsentements(true);
+    setErreurConsentements("");
+
+    const { data, error } = await supabase.rpc(
+      "lister_consentements_a_completer_parent"
+    );
+
+    if (error) {
+      console.error("Erreur lors du chargement des consentements à compléter :", error);
+      setConsentementsACompleter([]);
+      setPolitiquesConsentement([]);
+      setErreurConsentements(
+        "Impossible de vérifier les consentements à compléter."
+      );
+      setChargementConsentements(false);
+      return;
+    }
+
+    setConsentementsACompleter(data || []);
+    setChargementConsentements(false);
+  }, []);
+
+  const inscriptionConsentementCourante = consentementsACompleter[0] || null;
+
+  useEffect(() => {
+    let annule = false;
+
+    async function chargerPolitiques() {
+      if (!inscriptionConsentementCourante?.saison_id) {
+        setPolitiquesConsentement([]);
+        return;
+      }
+
+      setErreurConsentements("");
+      setReponsesConsentement({
+        code_conduite: false,
+        intervention: false,
+        photos_videos: null,
+        remboursement: false,
+      });
+
+      const { data, error } = await supabase.rpc(
+        "lister_politiques_inscription_parent",
+        { p_saison_id: inscriptionConsentementCourante.saison_id }
+      );
+
+      if (annule) return;
+
+      if (error) {
+        console.error("Erreur lors du chargement des politiques :", error);
+        setPolitiquesConsentement([]);
+        setErreurConsentements(
+          "Impossible de charger les politiques à accepter."
+        );
+        return;
+      }
+
+      setPolitiquesConsentement(data || []);
+    }
+
+    void chargerPolitiques();
+    return () => {
+      annule = true;
+    };
+  }, [inscriptionConsentementCourante?.inscription_id, inscriptionConsentementCourante?.saison_id]);
+
+  function consentementsValides() {
+    return politiquesConsentement.every((politique) => {
+      const reponse = reponsesConsentement[politique.type];
+      if (politique.type === "photos_videos") {
+        return reponse === true || reponse === false;
+      }
+      if (politique.obligatoire && !politique.refus_autorise) {
+        return reponse === true;
+      }
+      return reponse === true || reponse === false;
+    });
+  }
+
+  async function completerConsentements() {
+    if (!inscriptionConsentementCourante?.inscription_id || enregistrementConsentements) {
+      return;
+    }
+
+    if (!consentementsValides()) {
+      setErreurConsentements(
+        "Veuillez répondre à tous les consentements avant de confirmer."
+      );
+      return;
+    }
+
+    setEnregistrementConsentements(true);
+    setErreurConsentements("");
+
+    const { error } = await supabase.rpc(
+      "completer_consentements_inscription_parent",
+      {
+        p_inscription_id: inscriptionConsentementCourante.inscription_id,
+        p_accepte_code_conduite: reponsesConsentement.code_conduite === true,
+        p_accepte_intervention: reponsesConsentement.intervention === true,
+        p_autorise_photos_videos: reponsesConsentement.photos_videos === true,
+        p_accepte_remboursement: reponsesConsentement.remboursement === true,
+      }
+    );
+
+    if (error) {
+      console.error("Erreur lors de l'enregistrement des consentements :", error);
+      setErreurConsentements(
+        error.message || "Impossible d'enregistrer les consentements."
+      );
+      setEnregistrementConsentements(false);
+      return;
+    }
+
+    await Promise.all([
+      chargerConsentementsACompleter(),
+      chargerInscriptions(),
+      chargerHistoriqueDocuments(),
+    ]);
+    setEnregistrementConsentements(false);
+  }
+
   const chargerHistoriqueDocuments = useCallback(async () => {
     setChargementHistoriqueDocuments(true);
     setErreurHistoriqueDocuments("");
@@ -197,6 +332,7 @@ function EspaceParent({ profil }) {
     const libelles = {
       en_attente_paiement: "En attente de paiement",
       en_attente_validation: "En attente de validation",
+      consentements_a_completer: "Consentements à compléter",
       confirmee: "Confirmée",
       liste_attente: "Liste d'attente",
       annulee: "Annulée",
@@ -314,6 +450,7 @@ function EspaceParent({ profil }) {
         chargerContactsUrgence(),
         chargerInscriptions(),
         chargerHistoriqueDocuments(),
+        chargerConsentementsACompleter(),
       ]);
     });
     return () => {
@@ -325,6 +462,7 @@ function EspaceParent({ profil }) {
     chargerContactsUrgence,
     chargerInscriptions,
     chargerHistoriqueDocuments,
+    chargerConsentementsACompleter,
   ]);
   //=========================================================//  //GESTION DES CONTACTS D'URGENCE//  //=========================================================//
   function ouvrirAjoutContact() {
@@ -1329,6 +1467,149 @@ async function enregistrerProfilParent(
           </article>
         </section>
       </div>
+      {/* MODALE CONSENTEMENTS À COMPLÉTER */}
+      {!chargementConsentements && inscriptionConsentementCourante && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="titre-consentements-inscription"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 1000,
+            background: "rgba(0, 0, 0, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "1rem",
+          }}
+        >
+          <div
+            style={{
+              width: "min(760px, 100%)",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              background: "white",
+              borderRadius: "12px",
+              padding: "1.5rem",
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25)",
+            }}
+          >
+            <h2 id="titre-consentements-inscription">
+              Consentements requis pour confirmer l'inscription
+            </h2>
+            <p>
+              Une inscription a été ajoutée pour <strong>{inscriptionConsentementCourante.enfant_prenom} {inscriptionConsentementCourante.enfant_nom}</strong>.
+              Veuillez compléter les consentements ci-dessous afin de poursuivre l'inscription.
+            </p>
+            <p>
+              <strong>{inscriptionConsentementCourante.cours_nom}</strong>
+              {inscriptionConsentementCourante.groupe_nom
+                ? ` — ${inscriptionConsentementCourante.groupe_nom}`
+                : ""}
+              {inscriptionConsentementCourante.saison_nom
+                ? ` — ${inscriptionConsentementCourante.saison_nom}`
+                : ""}
+            </p>
+
+            {politiquesConsentement.length === 0 && !erreurConsentements ? (
+              <p>Chargement des politiques...</p>
+            ) : (
+              politiquesConsentement.map((politique) => (
+                <section
+                  key={`${politique.type}-${politique.version}`}
+                  style={{
+                    marginTop: "1.25rem",
+                    paddingTop: "1rem",
+                    borderTop: "1px solid #ddd",
+                  }}
+                >
+                  <h3>{politique.titre}</h3>
+                  <p style={{ whiteSpace: "pre-wrap" }}>{politique.contenu}</p>
+
+                  {politique.type === "photos_videos" || politique.refus_autorise ? (
+                    <fieldset style={{ border: 0, padding: 0, margin: "0.75rem 0 0" }}>
+                      <legend><strong>Votre réponse</strong></legend>
+                      <label style={{ marginRight: "1.5rem" }}>
+                        <input
+                          type="radio"
+                          name={`consentement-${politique.type}`}
+                          checked={reponsesConsentement[politique.type] === true}
+                          onChange={() =>
+                            setReponsesConsentement((precedent) => ({
+                              ...precedent,
+                              [politique.type]: true,
+                            }))
+                          }
+                        />{" "}
+                        J'accepte
+                      </label>
+                      <label>
+                        <input
+                          type="radio"
+                          name={`consentement-${politique.type}`}
+                          checked={reponsesConsentement[politique.type] === false}
+                          onChange={() =>
+                            setReponsesConsentement((precedent) => ({
+                              ...precedent,
+                              [politique.type]: false,
+                            }))
+                          }
+                        />{" "}
+                        Je refuse
+                      </label>
+                    </fieldset>
+                  ) : (
+                    <label style={{ display: "block", marginTop: "0.75rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={reponsesConsentement[politique.type] === true}
+                        onChange={(event) =>
+                          setReponsesConsentement((precedent) => ({
+                            ...precedent,
+                            [politique.type]: event.target.checked,
+                          }))
+                        }
+                      />{" "}
+                      J'ai lu et j'accepte cette politique.
+                    </label>
+                  )}
+                </section>
+              ))
+            )}
+
+            {erreurConsentements && (
+              <p role="alert" style={{ marginTop: "1rem" }}>
+                <strong>{erreurConsentements}</strong>
+              </p>
+            )}
+
+            <div className="actions-fiche" style={{ marginTop: "1.5rem" }}>
+              <button
+                type="button"
+                className="bouton bouton-principal"
+                disabled={
+                  enregistrementConsentements ||
+                  politiquesConsentement.length === 0 ||
+                  !consentementsValides()
+                }
+                onClick={completerConsentements}
+              >
+                {enregistrementConsentements
+                  ? "Enregistrement..."
+                  : "Confirmer les consentements"}
+              </button>
+            </div>
+
+            {consentementsACompleter.length > 1 && (
+              <p style={{ marginTop: "1rem" }}>
+                Il restera {consentementsACompleter.length - 1} autre inscription à compléter ensuite.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* MODALE AJOUT ENFANT */}
       {afficherAjoutEnfant && (
         <ModalAjoutEnfant
