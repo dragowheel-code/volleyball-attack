@@ -45,27 +45,6 @@ function GestionInscriptions() {
   const [previsualisationTransfert, setPrevisualisationTransfert] = useState(null);
   const [chargementTransfert, setChargementTransfert] = useState(false);
   const [transfertEnCours, setTransfertEnCours] = useState(false);
-
-  // Inscription manuelle administrative
-  const [modalInscriptionManuelle, setModalInscriptionManuelle] = useState(false);
-  const [famillesAdmin, setFamillesAdmin] = useState([]);
-  const [rechercheFamille, setRechercheFamille] = useState("");
-  const [familleSelectionnee, setFamilleSelectionnee] = useState(null);
-  const [enfantManuelId, setEnfantManuelId] = useState("");
-  const [parentManuelId, setParentManuelId] = useState("");
-  const [coursManuels, setCoursManuels] = useState([]);
-  const [groupesManuels, setGroupesManuels] = useState([]);
-  const [coursManuelId, setCoursManuelId] = useState("");
-  const [groupeManuelId, setGroupeManuelId] = useState("");
-  const [anneesScolaires, setAnneesScolaires] = useState([]);
-  const [anneeScolaireManuelleId, setAnneeScolaireManuelleId] = useState("");
-  const [niveauxVolleyball, setNiveauxVolleyball] = useState([]);
-  const [niveauVolleyballManuelId, setNiveauVolleyballManuelId] = useState("");
-  const [nombreVersementsManuel, setNombreVersementsManuel] = useState(1);
-  const [noteInscriptionManuelle, setNoteInscriptionManuelle] = useState("");
-  const [previsualisationManuelle, setPrevisualisationManuelle] = useState(null);
-  const [chargementInscriptionManuelle, setChargementInscriptionManuelle] = useState(false);
-  const [creationInscriptionManuelle, setCreationInscriptionManuelle] = useState(false);
   useEffect(() => {
     chargerInscriptions();
   }, []);
@@ -322,6 +301,10 @@ setInscriptions(inscriptionsCompletees);
       total: inscriptions.filter(
         (inscription) =>
           inscription.statut !== "annulee"
+      ).length,
+      consentementsACompleter: inscriptions.filter(
+        (inscription) =>
+          inscription.statut === "consentements_a_completer"
       ).length,
       attentePaiement: inscriptions.filter(
         (inscription) =>
@@ -864,205 +847,6 @@ setInscriptions(inscriptionsCompletees);
     await chargerInscriptions();
   }
 
-  function reinitialiserInscriptionManuelle() {
-    setFamillesAdmin([]);
-    setRechercheFamille("");
-    setFamilleSelectionnee(null);
-    setEnfantManuelId("");
-    setParentManuelId("");
-    setCoursManuels([]);
-    setGroupesManuels([]);
-    setCoursManuelId("");
-    setGroupeManuelId("");
-    setAnneesScolaires([]);
-    setAnneeScolaireManuelleId("");
-    setNiveauxVolleyball([]);
-    setNiveauVolleyballManuelId("");
-    setNombreVersementsManuel(1);
-    setNoteInscriptionManuelle("");
-    setPrevisualisationManuelle(null);
-  }
-
-  async function ouvrirInscriptionManuelle() {
-    if (!saisonActive?.id) return;
-
-    setErreur("");
-    reinitialiserInscriptionManuelle();
-    setModalInscriptionManuelle(true);
-    setChargementInscriptionManuelle(true);
-
-    const [famillesResultat, coursResultat, groupesResultat, anneesResultat, niveauxResultat] =
-      await Promise.all([
-        supabase.rpc("lister_familles_admin"),
-        supabase
-          .from("cours")
-          .select("id, nom, prix, demander_niveau_volleyball, actif")
-          .eq("saison_id", saisonActive.id)
-          .eq("actif", true)
-          .order("nom", { ascending: true }),
-        supabase
-          .from("groupes")
-          .select("id, nom, cours_id, capacite, ordre, actif, fusionne_vers_id")
-          .eq("actif", true)
-          .is("fusionne_vers_id", null)
-          .order("ordre", { ascending: true }),
-        supabase
-          .from("annees_scolaires")
-          .select("id, code, nom, ordre")
-          .eq("actif", true)
-          .order("ordre", { ascending: true }),
-        supabase
-          .from("niveaux_volleyball")
-          .select("id, code, nom, ordre")
-          .eq("actif", true)
-          .order("ordre", { ascending: true }),
-      ]);
-
-    const erreurChargement =
-      famillesResultat.error ||
-      coursResultat.error ||
-      groupesResultat.error ||
-      anneesResultat.error ||
-      niveauxResultat.error;
-
-    if (erreurChargement) {
-      console.error(erreurChargement);
-      setErreur(
-        erreurChargement.message ||
-          "Impossible de charger les données de l'inscription manuelle."
-      );
-      setChargementInscriptionManuelle(false);
-      return;
-    }
-
-    const idsCoursActifs = new Set((coursResultat.data ?? []).map((item) => item.id));
-
-    setFamillesAdmin(famillesResultat.data ?? []);
-    setCoursManuels(coursResultat.data ?? []);
-    setGroupesManuels(
-      (groupesResultat.data ?? []).filter((groupe) => idsCoursActifs.has(groupe.cours_id))
-    );
-    setAnneesScolaires(anneesResultat.data ?? []);
-    setNiveauxVolleyball(niveauxResultat.data ?? []);
-    setChargementInscriptionManuelle(false);
-  }
-
-  function fermerInscriptionManuelle() {
-    if (chargementInscriptionManuelle || creationInscriptionManuelle) return;
-    setModalInscriptionManuelle(false);
-    reinitialiserInscriptionManuelle();
-  }
-
-  async function choisirFamilleManuelle(familleId) {
-    setErreur("");
-    setPrevisualisationManuelle(null);
-    setEnfantManuelId("");
-    setParentManuelId("");
-    setChargementInscriptionManuelle(true);
-
-    const { data, error } = await supabase.rpc("lire_famille_admin", {
-      p_famille_id: familleId,
-    });
-
-    if (error) {
-      console.error(error);
-      setErreur(error.message || "Impossible de charger la famille.");
-      setChargementInscriptionManuelle(false);
-      return;
-    }
-
-    setFamilleSelectionnee(data ?? null);
-    setChargementInscriptionManuelle(false);
-  }
-
-  function choisirEnfantManuel(enfantId) {
-    setEnfantManuelId(enfantId);
-    setPrevisualisationManuelle(null);
-
-    const relations = familleSelectionnee?.relations_parents_enfants ?? [];
-    const relationPrincipale = relations.find(
-      (relation) => relation.enfant_id === enfantId && relation.principal
-    );
-    const relationQuelconque = relations.find(
-      (relation) => relation.enfant_id === enfantId
-    );
-    const parentsActifs = (familleSelectionnee?.parents ?? []).filter(
-      (parent) => parent.actif !== false
-    );
-    const parentParDefaut =
-      parentsActifs.find((parent) => parent.id === relationPrincipale?.parent_id) ||
-      parentsActifs.find((parent) => parent.id === relationQuelconque?.parent_id) ||
-      parentsActifs[0];
-
-    setParentManuelId(parentParDefaut?.id ?? "");
-  }
-
-  async function previsualiserInscriptionManuelle() {
-    if (
-      !enfantManuelId ||
-      !parentManuelId ||
-      !groupeManuelId ||
-      !anneeScolaireManuelleId
-    ) {
-      setErreur("Sélectionnez l'enfant, le parent, le groupe et l'année scolaire.");
-      return;
-    }
-
-    setErreur("");
-    setPrevisualisationManuelle(null);
-    setChargementInscriptionManuelle(true);
-
-    const { data, error } = await supabase.rpc(
-      "previsualiser_inscription_manuelle_admin",
-      {
-        p_enfant_id: enfantManuelId,
-        p_parent_id: parentManuelId,
-        p_groupe_id: groupeManuelId,
-        p_annee_scolaire_id: anneeScolaireManuelleId,
-        p_niveau_volleyball_id: niveauVolleyballManuelId || null,
-      }
-    );
-
-    if (error) {
-      console.error(error);
-      setErreur(error.message || "Impossible de prévisualiser l'inscription.");
-      setChargementInscriptionManuelle(false);
-      return;
-    }
-
-    setPrevisualisationManuelle(data?.[0] ?? null);
-    setChargementInscriptionManuelle(false);
-  }
-
-  async function creerInscriptionManuelle() {
-    if (!previsualisationManuelle || previsualisationManuelle.deja_inscrit) return;
-
-    setErreur("");
-    setCreationInscriptionManuelle(true);
-
-    const { error } = await supabase.rpc("creer_inscription_manuelle_admin", {
-      p_enfant_id: enfantManuelId,
-      p_parent_id: parentManuelId,
-      p_groupe_id: groupeManuelId,
-      p_annee_scolaire_id: anneeScolaireManuelleId,
-      p_niveau_volleyball_id: niveauVolleyballManuelId || null,
-      p_nombre_versements: Number(nombreVersementsManuel),
-      p_note: noteInscriptionManuelle.trim() || null,
-    });
-
-    if (error) {
-      console.error(error);
-      setErreur(error.message || "Impossible de créer l'inscription manuelle.");
-      setCreationInscriptionManuelle(false);
-      return;
-    }
-
-    setCreationInscriptionManuelle(false);
-    setModalInscriptionManuelle(false);
-    reinitialiserInscriptionManuelle();
-    await chargerInscriptions();
-  }
-
   async function confirmerPaiement() {
     if (!inscriptionPaiement) {
       return;
@@ -1120,24 +904,14 @@ setInscriptions(inscriptionsCompletees);
             la saison active.
           </p>
         </div>
-        <div className="gestion-inscriptions-entete-actions">
-          <button
-            type="button"
-            className="admin-bouton admin-bouton-primaire"
-            onClick={ouvrirInscriptionManuelle}
-            disabled={chargement || !saisonActive}
-          >
-            + Inscription manuelle
-          </button>
-          <button
-            type="button"
-            className="admin-bouton admin-bouton-secondaire"
-            onClick={chargerInscriptions}
-            disabled={chargement}
-          >
-            Actualiser
-          </button>
-        </div>
+        <button
+          type="button"
+          className="admin-bouton admin-bouton-secondaire"
+          onClick={chargerInscriptions}
+          disabled={chargement}
+        >
+          Actualiser
+        </button>
       </div>
       {erreur && (
         <div className="gestion-inscriptions-erreur">
@@ -1235,9 +1009,6 @@ setInscriptions(inscriptionsCompletees);
               <option value="en_attente_validation">
                 En attente de validation
               </option>
-              <option value="consentements_a_completer">
-                Consentements à compléter
-              </option>
               <option value="en_attente_paiement">
                 En attente de paiement
               </option>
@@ -1279,7 +1050,6 @@ setInscriptions(inscriptionsCompletees);
                     <th>Montant</th>
                     <th>Paiement</th>
                     <th>Date</th>
-                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1297,101 +1067,21 @@ setInscriptions(inscriptionsCompletees);
                           }
                         >
                           <td>
-                            <strong>
-                              {
-                                inscription
-                                  .enfants
-                                  ?.prenom
-                              }{" "}
-                              {
-                                inscription
-                                  .enfants
-                                  ?.nom
-                              }
-                            </strong>
-                          </td>
-                          <td>
-                            {inscription
-                              .cours?.nom ??
-                              "—"}
-                          </td>
-                          <td>
-                            {inscription
-                              .groupe?.nom ??
-                              "—"}
-                          </td>
-                          <td>
-                            <span
-                              className={`gestion-inscriptions-statut statut-${inscription.statut}`}
-                            >
-                              {
-                                LIBELLES_STATUT[
+                            <div className="gestion-inscriptions-enfant">
+                              <strong>
+                                {
                                   inscription
-                                    .statut
-                                ] ??
-                                inscription.statut
-                              }
-                            </span>
-                          </td>
-                          <td>
-                            {formaterMontant(
-                              inscription
-                                .prix_facture
-                            )}
-                          </td>
-                          <td>
-                            {paiements.length > 0 ? (
-                              <div className="gestion-inscriptions-paiement">
-                                {paiements.map((paiement) => (
-                                  <div
-                                    key={paiement.id}
-                                    className="gestion-inscriptions-paiement-ligne"
-                                  >
-                                    <span>
-                                      Versement {paiement.numero_versement ?? 1}/
-                                      {inscription.nombre_versements ?? paiements.length}
-                                    </span>
-                                    <span
-                                      className={`gestion-inscriptions-statut paiement-${paiement.statut}`}
-                                    >
-                                      {LIBELLES_PAIEMENT[paiement.statut] ??
-                                        paiement.statut}
-                                    </span>
-                                    <small>
-                                      {formaterMontant(paiement.montant)}
-                                      {paiement.reference
-                                        ? ` — ${paiement.reference}`
-                                        : ""}
-                                    </small>
-                                  </div>
-                                ))}
-                                {Number(inscription.montant_rembourse ?? 0) > 0 && (
-                                  <small>
-                                    Remboursé :{" "}
-                                    {formaterMontant(
-                                      inscription.montant_rembourse
-                                    )}
-                                  </small>
-                                )}
-                              </div>
-                            ) : inscription.statut === "liste_attente" ||
-                              inscription.statut === "en_attente_validation" ||
-                              inscription.statut === "consentements_a_completer" ? (
-                              <span className="gestion-inscriptions-pas-paiement">
-                                Aucun paiement
-                              </span>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                          <td>
-                            {formaterDate(
-                              inscription
-                                .date_inscription
-                            )}
-                          </td>
-                          <td>
-                            <div className="gestion-inscriptions-actions">
+                                    .enfants
+                                    ?.prenom
+                                }{" "}
+                                {
+                                  inscription
+                                    .enfants
+                                    ?.nom
+                                }
+                              </strong>
+
+                              <div className="gestion-inscriptions-actions">
                               {inscription.statut === "en_attente_validation" && (
                                 <>
                                   <button
@@ -1555,7 +1245,88 @@ Number(
                                   </span>
                                 )}
                             </div>
+                            </div>
                           </td>
+                          <td>
+                            {inscription
+                              .cours?.nom ??
+                              "—"}
+                          </td>
+                          <td>
+                            {inscription
+                              .groupe?.nom ??
+                              "—"}
+                          </td>
+                          <td>
+                            <span
+                              className={`gestion-inscriptions-statut statut-${inscription.statut}`}
+                            >
+                              {
+                                LIBELLES_STATUT[
+                                  inscription
+                                    .statut
+                                ] ??
+                                inscription.statut
+                              }
+                            </span>
+                          </td>
+                          <td>
+                            {formaterMontant(
+                              inscription
+                                .prix_facture
+                            )}
+                          </td>
+                          <td>
+                            {paiements.length > 0 ? (
+                              <div className="gestion-inscriptions-paiement">
+                                {paiements.map((paiement) => (
+                                  <div
+                                    key={paiement.id}
+                                    className="gestion-inscriptions-paiement-ligne"
+                                  >
+                                    <span>
+                                      Versement {paiement.numero_versement ?? 1}/
+                                      {inscription.nombre_versements ?? paiements.length}
+                                    </span>
+                                    <span
+                                      className={`gestion-inscriptions-statut paiement-${paiement.statut}`}
+                                    >
+                                      {LIBELLES_PAIEMENT[paiement.statut] ??
+                                        paiement.statut}
+                                    </span>
+                                    <small>
+                                      {formaterMontant(paiement.montant)}
+                                      {paiement.reference
+                                        ? ` — ${paiement.reference}`
+                                        : ""}
+                                    </small>
+                                  </div>
+                                ))}
+                                {Number(inscription.montant_rembourse ?? 0) > 0 && (
+                                  <small>
+                                    Remboursé :{" "}
+                                    {formaterMontant(
+                                      inscription.montant_rembourse
+                                    )}
+                                  </small>
+                                )}
+                              </div>
+                            ) : inscription.statut === "liste_attente" ||
+                              inscription.statut === "en_attente_validation" ? (
+                              <span className="gestion-inscriptions-pas-paiement">
+                                Aucun paiement
+                              </span>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td>
+                            {formaterDate(
+                              inscription
+                                .date_inscription
+                            )}
+                          </td>
+
                         </tr>
                       );
                     }
@@ -1566,312 +1337,6 @@ Number(
           )}
         </>
       )}
-      {modalInscriptionManuelle && (
-        <div
-          className="gestion-inscriptions-modal-fond"
-          onMouseDown={fermerInscriptionManuelle}
-        >
-          <div
-            className="gestion-inscriptions-modal gestion-inscriptions-modal-large"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <h2>Inscription manuelle</h2>
-            <p>
-              Ajoutez un enfant déjà existant à un groupe, même après la fermeture
-              des inscriptions. Le parent devra compléter les consentements avant
-              que la facturation soit créée.
-            </p>
-
-            {chargementInscriptionManuelle && !familleSelectionnee && (
-              <p>Chargement...</p>
-            )}
-
-            <label className="gestion-inscriptions-champ">
-              <span>Rechercher une famille ou un enfant</span>
-              <input
-                type="search"
-                value={rechercheFamille}
-                onChange={(event) => setRechercheFamille(event.target.value)}
-                placeholder="Nom de famille ou nom de l'enfant"
-                disabled={chargementInscriptionManuelle}
-              />
-            </label>
-
-            {rechercheFamille.trim() && !familleSelectionnee && (
-              <div className="gestion-inscriptions-resultats-familles">
-                {famillesAdmin
-                  .filter((famille) => {
-                    const texte = rechercheFamille.trim().toLowerCase();
-                    return (
-                      (famille.nom_famille ?? "").toLowerCase().includes(texte) ||
-                      (famille.noms_enfants ?? "").toLowerCase().includes(texte)
-                    );
-                  })
-                  .slice(0, 12)
-                  .map((famille) => (
-                    <button
-                      key={famille.famille_id}
-                      type="button"
-                      className="gestion-inscriptions-resultat-famille"
-                      onClick={() => choisirFamilleManuelle(famille.famille_id)}
-                    >
-                      <strong>{famille.nom_famille || "Famille"}</strong>
-                      <span>{famille.noms_enfants || "Aucun enfant"}</span>
-                    </button>
-                  ))}
-              </div>
-            )}
-
-            {familleSelectionnee && (
-              <>
-                <div className="gestion-inscriptions-modal-info">
-                  <strong>Famille sélectionnée</strong>
-                  <span>
-                    {(familleSelectionnee.enfants ?? [])
-                      .map((enfant) => `${enfant.prenom} ${enfant.nom}`)
-                      .join(", ")}
-                  </span>
-                  <button
-                    type="button"
-                    className="admin-bouton admin-bouton-secondaire"
-                    onClick={() => {
-                      setFamilleSelectionnee(null);
-                      setEnfantManuelId("");
-                      setParentManuelId("");
-                      setPrevisualisationManuelle(null);
-                    }}
-                  >
-                    Changer de famille
-                  </button>
-                </div>
-
-                <div className="gestion-inscriptions-grille-formulaire">
-                  <label className="gestion-inscriptions-champ">
-                    <span>Enfant</span>
-                    <select
-                      value={enfantManuelId}
-                      onChange={(event) => choisirEnfantManuel(event.target.value)}
-                    >
-                      <option value="">Sélectionner</option>
-                      {(familleSelectionnee.enfants ?? [])
-                        .filter((enfant) => enfant.actif !== false)
-                        .map((enfant) => (
-                          <option key={enfant.id} value={enfant.id}>
-                            {enfant.prenom} {enfant.nom}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-
-                  <label className="gestion-inscriptions-champ">
-                    <span>Parent responsable</span>
-                    <select
-                      value={parentManuelId}
-                      onChange={(event) => {
-                        setParentManuelId(event.target.value);
-                        setPrevisualisationManuelle(null);
-                      }}
-                      disabled={!enfantManuelId}
-                    >
-                      <option value="">Sélectionner</option>
-                      {(familleSelectionnee.parents ?? [])
-                        .filter((parent) => parent.actif !== false)
-                        .map((parent) => (
-                          <option key={parent.id} value={parent.id}>
-                            {parent.prenom} {parent.nom}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-
-                  <label className="gestion-inscriptions-champ">
-                    <span>Cours</span>
-                    <select
-                      value={coursManuelId}
-                      onChange={(event) => {
-                        setCoursManuelId(event.target.value);
-                        setGroupeManuelId("");
-                        setNiveauVolleyballManuelId("");
-                        setPrevisualisationManuelle(null);
-                      }}
-                    >
-                      <option value="">Sélectionner</option>
-                      {coursManuels.map((cours) => (
-                        <option key={cours.id} value={cours.id}>
-                          {cours.nom} — {formaterMontant(cours.prix)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="gestion-inscriptions-champ">
-                    <span>Groupe</span>
-                    <select
-                      value={groupeManuelId}
-                      onChange={(event) => {
-                        setGroupeManuelId(event.target.value);
-                        setPrevisualisationManuelle(null);
-                      }}
-                      disabled={!coursManuelId}
-                    >
-                      <option value="">Sélectionner</option>
-                      {groupesManuels
-                        .filter((groupe) => groupe.cours_id === coursManuelId)
-                        .map((groupe) => (
-                          <option key={groupe.id} value={groupe.id}>
-                            {groupe.nom} — capacité {groupe.capacite}
-                          </option>
-                        ))}
-                    </select>
-                  </label>
-
-                  <label className="gestion-inscriptions-champ">
-                    <span>Année scolaire</span>
-                    <select
-                      value={anneeScolaireManuelleId}
-                      onChange={(event) => {
-                        setAnneeScolaireManuelleId(event.target.value);
-                        setPrevisualisationManuelle(null);
-                      }}
-                    >
-                      <option value="">Sélectionner</option>
-                      {anneesScolaires.map((annee) => (
-                        <option key={annee.id} value={annee.id}>
-                          {annee.nom}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  {coursManuels.find((cours) => cours.id === coursManuelId)
-                    ?.demander_niveau_volleyball && (
-                    <label className="gestion-inscriptions-champ">
-                      <span>Niveau de volleyball</span>
-                      <select
-                        value={niveauVolleyballManuelId}
-                        onChange={(event) => {
-                          setNiveauVolleyballManuelId(event.target.value);
-                          setPrevisualisationManuelle(null);
-                        }}
-                      >
-                        <option value="">Sélectionner</option>
-                        {niveauxVolleyball.map((niveau) => (
-                          <option key={niveau.id} value={niveau.id}>
-                            {niveau.nom}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  )}
-
-                  <label className="gestion-inscriptions-champ">
-                    <span>Nombre de versements</span>
-                    <select
-                      value={nombreVersementsManuel}
-                      onChange={(event) =>
-                        setNombreVersementsManuel(Number(event.target.value))
-                      }
-                    >
-                      <option value={1}>1 versement</option>
-                      <option value={2}>2 versements</option>
-                    </select>
-                  </label>
-                </div>
-
-                <label className="gestion-inscriptions-champ">
-                  <span>Note administrative (facultative)</span>
-                  <textarea
-                    value={noteInscriptionManuelle}
-                    onChange={(event) => setNoteInscriptionManuelle(event.target.value)}
-                    rows={3}
-                    placeholder="Ex. Inscription autorisée après la fermeture du groupe."
-                  />
-                </label>
-
-                {previsualisationManuelle && (
-                  <div className="gestion-inscriptions-modal-info">
-                    <strong>
-                      {previsualisationManuelle.enfant_nom} — {previsualisationManuelle.cours_nom}
-                    </strong>
-                    <span>Parent : {previsualisationManuelle.parent_nom}</span>
-                    <span>Groupe : {previsualisationManuelle.groupe_nom}</span>
-                    <span>Prix : {formaterMontant(previsualisationManuelle.prix)}</span>
-                    <span>
-                      Occupation : {previsualisationManuelle.places_occupees}/
-                      {previsualisationManuelle.capacite} — {previsualisationManuelle.places_restantes} place(s) restante(s)
-                    </span>
-
-                    {previsualisationManuelle.deja_inscrit && (
-                      <strong>⚠ Cet enfant possède déjà une inscription active dans ce groupe.</strong>
-                    )}
-                    {previsualisationManuelle.avertissement_capacite && (
-                      <strong>⚠ Le groupe est complet. Cette inscription dépassera la capacité.</strong>
-                    )}
-                    {previsualisationManuelle.avertissement_annee_scolaire && (
-                      <strong>⚠ L'année scolaire ne correspond pas aux critères habituels du cours.</strong>
-                    )}
-                    {previsualisationManuelle.avertissement_sexe && (
-                      <strong>⚠ Le sexe ne correspond pas aux critères habituels du cours.</strong>
-                    )}
-                    {previsualisationManuelle.avertissement_niveau && (
-                      <strong>⚠ Le niveau de volleyball doit être vérifié.</strong>
-                    )}
-                    {!previsualisationManuelle.deja_inscrit && (
-                      <span>
-                        Après création, le statut sera « Consentements à compléter ».
-                      </span>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-
-            <div className="gestion-inscriptions-modal-actions">
-              <button
-                type="button"
-                className="admin-bouton admin-bouton-secondaire"
-                onClick={fermerInscriptionManuelle}
-                disabled={chargementInscriptionManuelle || creationInscriptionManuelle}
-              >
-                Fermer
-              </button>
-
-              {familleSelectionnee && !previsualisationManuelle && (
-                <button
-                  type="button"
-                  className="admin-bouton admin-bouton-primaire"
-                  onClick={previsualiserInscriptionManuelle}
-                  disabled={
-                    chargementInscriptionManuelle ||
-                    !enfantManuelId ||
-                    !parentManuelId ||
-                    !groupeManuelId ||
-                    !anneeScolaireManuelleId
-                  }
-                >
-                  {chargementInscriptionManuelle ? "Chargement..." : "Prévisualiser"}
-                </button>
-              )}
-
-              {previsualisationManuelle && (
-                <button
-                  type="button"
-                  className="admin-bouton admin-bouton-primaire"
-                  onClick={creerInscriptionManuelle}
-                  disabled={
-                    creationInscriptionManuelle || previsualisationManuelle.deja_inscrit
-                  }
-                >
-                  {creationInscriptionManuelle
-                    ? "Création..."
-                    : "Confirmer l'inscription"}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {inscriptionTransfert && (
         <div
           className="gestion-inscriptions-modal-fond"
