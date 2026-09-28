@@ -227,47 +227,89 @@ function EspaceParent({ profil }) {
   }
 
   async function completerConsentements() {
-    if (!inscriptionConsentementCourante?.inscription_id || enregistrementConsentements) {
-      return;
+  if (
+    !inscriptionConsentementCourante?.inscription_id ||
+    enregistrementConsentements
+  ) {
+    return;
+  }
+
+  if (!consentementsValides()) {
+    setErreurConsentements(
+      "Veuillez répondre à tous les consentements avant de confirmer."
+    );
+    return;
+  }
+
+  setEnregistrementConsentements(true);
+  setErreurConsentements("");
+
+  const inscriptionId =
+    inscriptionConsentementCourante.inscription_id;
+
+  const { error } = await supabase.rpc(
+    "completer_consentements_inscription_parent",
+    {
+      p_inscription_id: inscriptionId,
+      p_accepte_code_conduite:
+        reponsesConsentement.code_conduite === true,
+      p_accepte_intervention:
+        reponsesConsentement.intervention === true,
+      p_autorise_photos_videos:
+        reponsesConsentement.photos_videos === true,
+      p_accepte_remboursement:
+        reponsesConsentement.remboursement === true,
     }
+  );
 
-    if (!consentementsValides()) {
-      setErreurConsentements(
-        "Veuillez répondre à tous les consentements avant de confirmer."
-      );
-      return;
-    }
+  if (error) {
+    console.error(
+      "Erreur lors de l'enregistrement des consentements :",
+      error
+    );
 
-    setEnregistrementConsentements(true);
-    setErreurConsentements("");
+    setErreurConsentements(
+      error.message ||
+        "Impossible d'enregistrer les consentements."
+    );
 
-    const { error } = await supabase.rpc(
-      "completer_consentements_inscription_parent",
+    setEnregistrementConsentements(false);
+    return;
+  }
+
+  /*
+   * Les consentements sont maintenant enregistrés.
+   * L'inscription est passée à en_attente_paiement
+   * et les paiements ont été créés.
+   *
+   * On peut donc envoyer le courriel de confirmation
+   * avec les informations de paiement.
+   */
+  const { error: erreurCourriel } =
+    await supabase.functions.invoke(
+      "envoyer-courriel-inscription",
       {
-        p_inscription_id: inscriptionConsentementCourante.inscription_id,
-        p_accepte_code_conduite: reponsesConsentement.code_conduite === true,
-        p_accepte_intervention: reponsesConsentement.intervention === true,
-        p_autorise_photos_videos: reponsesConsentement.photos_videos === true,
-        p_accepte_remboursement: reponsesConsentement.remboursement === true,
+        body: {
+          inscription_id: inscriptionId,
+        },
       }
     );
 
-    if (error) {
-      console.error("Erreur lors de l'enregistrement des consentements :", error);
-      setErreurConsentements(
-        error.message || "Impossible d'enregistrer les consentements."
-      );
-      setEnregistrementConsentements(false);
-      return;
-    }
-
-    await Promise.all([
-      chargerConsentementsACompleter(),
-      chargerInscriptions(),
-      chargerHistoriqueDocuments(),
-    ]);
-    setEnregistrementConsentements(false);
+  if (erreurCourriel) {
+    console.error(
+      "Consentements enregistrés, mais erreur lors de l'envoi du courriel :",
+      erreurCourriel
+    );
   }
+
+  await Promise.all([
+    chargerConsentementsACompleter(),
+    chargerInscriptions(),
+    chargerHistoriqueDocuments(),
+  ]);
+
+  setEnregistrementConsentements(false);
+}
 
   const chargerHistoriqueDocuments = useCallback(async () => {
     setChargementHistoriqueDocuments(true);

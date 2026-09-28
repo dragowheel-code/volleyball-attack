@@ -495,37 +495,75 @@ setInscriptions(inscriptionsCompletees);
     await chargerInscriptions();
   }
   async function offrirProchainePlace(inscription) {
-    if (!inscription?.groupe_id) {
-      return;
-    }
-    const nomGroupe =
-      inscription.groupe?.nom ?? "ce groupe";
-    const confirmation = window.confirm(
-      `Offrir la prochaine place disponible dans ${nomGroupe} ?`
-    );
-    if (!confirmation) {
-      return;
-    }
-    setErreur("");
-    setOffrePlaceEnCours(inscription.groupe_id);
-    const { error: erreurOffre } = await supabase.rpc(
+  if (!inscription?.groupe_id) {
+    return;
+  }
+
+  const nomGroupe =
+    inscription.groupe?.nom ?? "ce groupe";
+
+  const confirmation = window.confirm(
+    `Offrir la prochaine place disponible dans ${nomGroupe} ?`
+  );
+
+  if (!confirmation) {
+    return;
+  }
+
+  setErreur("");
+  setOffrePlaceEnCours(inscription.groupe_id);
+
+  const { data: offre, error: erreurOffre } =
+    await supabase.rpc(
       "offrir_prochaine_place",
       {
         p_groupe_id: inscription.groupe_id,
       }
     );
-    if (erreurOffre) {
-      console.error(erreurOffre);
-      setErreur(
-        erreurOffre.message ||
-          "Impossible d'offrir la prochaine place."
-      );
-      setOffrePlaceEnCours(null);
-      return;
-    }
+
+  if (erreurOffre) {
+    console.error(erreurOffre);
+
+    setErreur(
+      erreurOffre.message ||
+        "Impossible d'offrir la prochaine place."
+    );
+
     setOffrePlaceEnCours(null);
-    await chargerInscriptions();
+    return;
   }
+
+  const inscriptionPromue = Array.isArray(offre)
+    ? offre[0]
+    : offre;
+
+  if (inscriptionPromue?.inscription_id) {
+    const { error: erreurCourriel } =
+      await supabase.functions.invoke(
+        "envoyer-courriel-inscription",
+        {
+          body: {
+            inscription_id:
+              inscriptionPromue.inscription_id,
+          },
+        }
+      );
+
+    if (erreurCourriel) {
+      console.error(
+        "La place a été offerte, mais le courriel n'a pas pu être envoyé :",
+        erreurCourriel
+      );
+
+      setErreur(
+        "La place a bien été offerte, mais le courriel au parent n'a pas pu être envoyé."
+      );
+    }
+  }
+
+  setOffrePlaceEnCours(null);
+  await chargerInscriptions();
+}
   async function annulerInscription(inscription) {
     if (!inscription?.id) {
       return;
@@ -955,6 +993,14 @@ setInscriptions(inscriptionsCompletees);
               </span>
               <strong>
                 {statistiques.attenteValidation}
+              </strong>
+            </div>
+            <div className="gestion-inscriptions-stat">
+              <span>
+                Consentements à compléter
+              </span>
+              <strong>
+                {statistiques.consentementsACompleter}
               </strong>
             </div>
             <div className="gestion-inscriptions-stat">
