@@ -1,8 +1,4 @@
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../lib/supabaseClient";
 import "./GestionInscriptions.css";
 const LIBELLES_STATUT = {
@@ -25,24 +21,55 @@ function GestionInscriptions() {
   const [erreur, setErreur] = useState("");
   const [filtreStatut, setFiltreStatut] = useState("toutes");
   const [recherche, setRecherche] = useState("");
-  const [inscriptionPaiement, setInscriptionPaiement] =
-    useState(null);
-  const [referencePaiement, setReferencePaiement] =
-    useState("");
-  const [confirmationEnCours, setConfirmationEnCours] =
+  const [inscriptionPaiement, setInscriptionPaiement] = useState(null);
+  const [referencePaiement, setReferencePaiement] = useState("");
+  // =========================================================
+  // Inscription manuelle
+  // =========================================================
+
+  const [modalInscriptionManuelle, setModalInscriptionManuelle] =
     useState(false);
-  const [offrePlaceEnCours, setOffrePlaceEnCours] =
+
+  const [chargementInscriptionManuelle, setChargementInscriptionManuelle] =
+    useState(false);
+
+  const [creationInscriptionManuelle, setCreationInscriptionManuelle] =
+    useState(false);
+
+  const [famillesAdmin, setFamillesAdmin] = useState([]);
+  const [familleSelectionnee, setFamilleSelectionnee] = useState(null);
+  const [rechercheFamille, setRechercheFamille] = useState("");
+
+  const [enfantManuelId, setEnfantManuelId] = useState("");
+  const [parentManuelId, setParentManuelId] = useState("");
+
+  const [coursManuels, setCoursManuels] = useState([]);
+  const [coursManuelId, setCoursManuelId] = useState("");
+  const [groupesManuels, setGroupesManuels] = useState([]);
+  const [groupeManuelId, setGroupeManuelId] = useState("");
+
+  const [anneesScolaires, setAnneesScolaires] = useState([]);
+  const [anneeScolaireManuelleId, setAnneeScolaireManuelleId] = useState("");
+
+  const [niveauxVolleyball, setNiveauxVolleyball] = useState([]);
+  const [niveauVolleyballManuelId, setNiveauVolleyballManuelId] = useState("");
+
+  const [nombreVersementsManuel, setNombreVersementsManuel] = useState(1);
+
+  const [noteInscriptionManuelle, setNoteInscriptionManuelle] = useState("");
+
+  const [previsualisationManuelle, setPrevisualisationManuelle] =
     useState(null);
-  const [annulationEnCours, setAnnulationEnCours] =
-    useState(null);
-  const [remboursementEnCours, setRemboursementEnCours] =
-    useState(null);
-  const [validationEnCours, setValidationEnCours] =
-    useState(null);
+  const [confirmationEnCours, setConfirmationEnCours] = useState(false);
+  const [offrePlaceEnCours, setOffrePlaceEnCours] = useState(null);
+  const [annulationEnCours, setAnnulationEnCours] = useState(null);
+  const [remboursementEnCours, setRemboursementEnCours] = useState(null);
+  const [validationEnCours, setValidationEnCours] = useState(null);
   const [inscriptionTransfert, setInscriptionTransfert] = useState(null);
   const [groupesTransfert, setGroupesTransfert] = useState([]);
   const [groupeDestinationId, setGroupeDestinationId] = useState("");
-  const [previsualisationTransfert, setPrevisualisationTransfert] = useState(null);
+  const [previsualisationTransfert, setPrevisualisationTransfert] =
+    useState(null);
   const [chargementTransfert, setChargementTransfert] = useState(false);
   const [transfertEnCours, setTransfertEnCours] = useState(false);
   useEffect(() => {
@@ -51,24 +78,21 @@ function GestionInscriptions() {
   async function chargerInscriptions() {
     setChargement(true);
     setErreur("");
-    const {
-      data: saison,
-      error: erreurSaison,
-    } = await supabase
+    const { data: saison, error: erreurSaison } = await supabase
       .from("saisons")
-      .select(`
+      .select(
+        `
         id,
         nom,
         date_debut,
         date_fin
-        `)
+        `,
+      )
       .eq("active", true)
       .maybeSingle();
     if (erreurSaison) {
       console.error(erreurSaison);
-      setErreur(
-        "Impossible de charger la saison active."
-      );
+      setErreur("Impossible de charger la saison active.");
       setChargement(false);
       return;
     }
@@ -79,67 +103,55 @@ function GestionInscriptions() {
       return;
     }
     setSaisonActive(saison);
-    const {
-      data: cours,
-      error: erreurCours,
-    } = await supabase
+    const { data: cours, error: erreurCours } = await supabase
       .from("cours")
-      .select(`
+      .select(
+        `
         id,
         nom
-      `)
+      `,
+      )
       .eq("saison_id", saison.id);
     if (erreurCours) {
       console.error(erreurCours);
-      setErreur(
-        "Impossible de charger les cours."
-      );
+      setErreur("Impossible de charger les cours.");
       setChargement(false);
       return;
     }
-    const idsCours = (cours ?? []).map(
-      (coursItem) => coursItem.id
-    );
+    const idsCours = (cours ?? []).map((coursItem) => coursItem.id);
     if (idsCours.length === 0) {
       setInscriptions([]);
       setChargement(false);
       return;
     }
-    const {
-      data: groupes,
-      error: erreurGroupes,
-    } = await supabase
+    const { data: groupes, error: erreurGroupes } = await supabase
       .from("groupes")
-      .select(`
+      .select(
+        `
         id,
         nom,
         capacite,
         ordre,
         cours_id
-      `)
+      `,
+      )
       .in("cours_id", idsCours);
     if (erreurGroupes) {
       console.error(erreurGroupes);
-      setErreur(
-        "Impossible de charger les groupes."
-      );
+      setErreur("Impossible de charger les groupes.");
       setChargement(false);
       return;
     }
-    const idsGroupes = (groupes ?? []).map(
-      (groupe) => groupe.id
-    );
+    const idsGroupes = (groupes ?? []).map((groupe) => groupe.id);
     if (idsGroupes.length === 0) {
       setInscriptions([]);
       setChargement(false);
       return;
     }
-    const {
-      data,
-      error: erreurInscriptions,
-    } = await supabase
+    const { data, error: erreurInscriptions } = await supabase
       .from("inscriptions")
-      .select(`
+      .select(
+        `
         id,
         enfant_id,
         groupe_id,
@@ -167,205 +179,160 @@ function GestionInscriptions() {
           reference,
           date_paiement
         )
-      `)
+      `,
+      )
       .in("groupe_id", idsGroupes)
       .order("date_inscription", {
         ascending: false,
       });
     if (erreurInscriptions) {
       console.error(erreurInscriptions);
-      setErreur(
-        "Impossible de charger les inscriptions."
-      );
+      setErreur("Impossible de charger les inscriptions.");
       setInscriptions([]);
       setChargement(false);
       return;
     }
     const coursParId = new Map(
-      (cours ?? []).map((coursItem) => [
-        coursItem.id,
-        coursItem,
-      ])
+      (cours ?? []).map((coursItem) => [coursItem.id, coursItem]),
     );
     const groupesParId = new Map(
-      (groupes ?? []).map((groupe) => [
-        groupe.id,
-        groupe,
-      ])
+      (groupes ?? []).map((groupe) => [groupe.id, groupe]),
     );
     const { data: inscriptionsAbsorbees, error: erreurInscriptionsAbsorbees } =
-  await supabase
-    .from("fusions_groupes_inscriptions")
-    .select("inscription_absorbee_id")
-    .in(
-      "inscription_absorbee_id",
-      (data ?? []).map((inscription) => inscription.id)
-    );
+      await supabase
+        .from("fusions_groupes_inscriptions")
+        .select("inscription_absorbee_id")
+        .in(
+          "inscription_absorbee_id",
+          (data ?? []).map((inscription) => inscription.id),
+        );
 
-if (erreurInscriptionsAbsorbees) {
-  console.error(erreurInscriptionsAbsorbees);
-  setErreur(
-    "Impossible de vérifier les inscriptions absorbées lors des fusions."
-  );
-  setChargement(false);
-  return;
-}
-
-const idsInscriptionsAbsorbees = new Set(
-  (inscriptionsAbsorbees ?? []).map(
-    (element) => element.inscription_absorbee_id
-  )
-);
-    const inscriptionsCompletees = await Promise.all(
-  (data ?? []).map(async (inscription) => {
-    const groupe = groupesParId.get(
-      inscription.groupe_id
-    );
-
-    const coursItem = groupe
-      ? coursParId.get(groupe.cours_id)
-      : null;
-
-    const {
-      data: situationPaiement,
-      error: erreurSituationPaiement,
-    } = await supabase.rpc(
-      "calculer_paiement_inscription",
-      {
-        p_inscription_id: inscription.id,
-      }
-    );
-
-    if (erreurSituationPaiement) {
-      console.error(
-        "Impossible de calculer la situation financière :",
-        erreurSituationPaiement
+    if (erreurInscriptionsAbsorbees) {
+      console.error(erreurInscriptionsAbsorbees);
+      setErreur(
+        "Impossible de vérifier les inscriptions absorbées lors des fusions.",
       );
+      setChargement(false);
+      return;
     }
 
-    const situationFinanciere =
-      situationPaiement?.[0] ?? null;
+    const idsInscriptionsAbsorbees = new Set(
+      (inscriptionsAbsorbees ?? []).map(
+        (element) => element.inscription_absorbee_id,
+      ),
+    );
+    const inscriptionsCompletees = await Promise.all(
+      (data ?? []).map(async (inscription) => {
+        const groupe = groupesParId.get(inscription.groupe_id);
 
-    return {
-      ...inscription,
-      groupe,
-      cours: coursItem,
-      situationFinanciere,
-      estAbsorbee: idsInscriptionsAbsorbees.has(inscription.id),
-    };
-  })
-);
+        const coursItem = groupe ? coursParId.get(groupe.cours_id) : null;
 
-setInscriptions(inscriptionsCompletees);
+        const { data: situationPaiement, error: erreurSituationPaiement } =
+          await supabase.rpc("calculer_paiement_inscription", {
+            p_inscription_id: inscription.id,
+          });
+
+        if (erreurSituationPaiement) {
+          console.error(
+            "Impossible de calculer la situation financière :",
+            erreurSituationPaiement,
+          );
+        }
+
+        const situationFinanciere = situationPaiement?.[0] ?? null;
+
+        return {
+          ...inscription,
+          groupe,
+          cours: coursItem,
+          situationFinanciere,
+          estAbsorbee: idsInscriptionsAbsorbees.has(inscription.id),
+        };
+      }),
+    );
+
+    setInscriptions(inscriptionsCompletees);
     setChargement(false);
   }
   const inscriptionsFiltrees = useMemo(() => {
-    const texte = recherche
-      .trim()
-      .toLowerCase();
-    return inscriptions.filter(
-      (inscription) => {
-        const statutCorrespond =
-          filtreStatut === "toutes" ||
-          inscription.statut === filtreStatut;
-        if (!statutCorrespond) {
-          return false;
-        }
-        if (!texte) {
-          return true;
-        }
-        const nomEnfant =
-          `${inscription.enfants?.prenom ?? ""} ${
-            inscription.enfants?.nom ?? ""
-          }`.toLowerCase();
-        const nomCours = (
-          inscription.cours?.nom ?? ""
-        ).toLowerCase();
-        const nomGroupe = (
-          inscription.groupe?.nom ?? ""
-        ).toLowerCase();
-        return (
-          nomEnfant.includes(texte) ||
-          nomCours.includes(texte) ||
-          nomGroupe.includes(texte)
-        );
+    const texte = recherche.trim().toLowerCase();
+    return inscriptions.filter((inscription) => {
+      const statutCorrespond =
+        filtreStatut === "toutes" || inscription.statut === filtreStatut;
+      if (!statutCorrespond) {
+        return false;
       }
-    );
-  }, [
-    inscriptions,
-    filtreStatut,
-    recherche,
-  ]);
+      if (!texte) {
+        return true;
+      }
+      const nomEnfant = `${inscription.enfants?.prenom ?? ""} ${
+        inscription.enfants?.nom ?? ""
+      }`.toLowerCase();
+      const nomCours = (inscription.cours?.nom ?? "").toLowerCase();
+      const nomGroupe = (inscription.groupe?.nom ?? "").toLowerCase();
+      return (
+        nomEnfant.includes(texte) ||
+        nomCours.includes(texte) ||
+        nomGroupe.includes(texte)
+      );
+    });
+  }, [inscriptions, filtreStatut, recherche]);
   const statistiques = useMemo(() => {
     return {
       total: inscriptions.filter(
-        (inscription) =>
-          inscription.statut !== "annulee"
+        (inscription) => inscription.statut !== "annulee",
       ).length,
       consentementsACompleter: inscriptions.filter(
-        (inscription) =>
-          inscription.statut === "consentements_a_completer"
+        (inscription) => inscription.statut === "consentements_a_completer",
       ).length,
       attentePaiement: inscriptions.filter(
-        (inscription) =>
-          inscription.statut ===
-          "en_attente_paiement"
+        (inscription) => inscription.statut === "en_attente_paiement",
       ).length,
       confirmees: inscriptions.filter(
-        (inscription) =>
-          inscription.statut === "confirmee"
+        (inscription) => inscription.statut === "confirmee",
       ).length,
       listeAttente: inscriptions.filter(
-        (inscription) =>
-          inscription.statut === "liste_attente"
+        (inscription) => inscription.statut === "liste_attente",
       ).length,
       attenteValidation: inscriptions.filter(
-        (inscription) =>
-          inscription.statut === "en_attente_validation"
+        (inscription) => inscription.statut === "en_attente_validation",
       ).length,
     };
   }, [inscriptions]);
   function formaterMontant(montant) {
     const valeur = Number(montant ?? 0);
-    return new Intl.NumberFormat(
-      "fr-CA",
-      {
-        style: "currency",
-        currency: "CAD",
-      }
-    ).format(valeur);
+    return new Intl.NumberFormat("fr-CA", {
+      style: "currency",
+      currency: "CAD",
+    }).format(valeur);
   }
   function formaterDate(date) {
     if (!date) {
       return "—";
     }
-    return new Intl.DateTimeFormat(
-      "fr-CA",
-      {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      }
-    ).format(new Date(date));
+    return new Intl.DateTimeFormat("fr-CA", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(new Date(date));
   }
   function obtenirPaiements(inscription) {
     const paiements = Array.isArray(inscription.paiements)
       ? inscription.paiements
       : inscription.paiements
-      ? [inscription.paiements]
-      : [];
+        ? [inscription.paiements]
+        : [];
     return [...paiements].sort(
       (a, b) =>
-        Number(a.numero_versement ?? 1) -
-        Number(b.numero_versement ?? 1)
+        Number(a.numero_versement ?? 1) - Number(b.numero_versement ?? 1),
     );
   }
   function obtenirProchainPaiement(inscription) {
     return (
       obtenirPaiements(inscription).find(
-        (paiement) => paiement.statut === "a_recevoir"
+        (paiement) => paiement.statut === "a_recevoir",
       ) ?? null
     );
   }
@@ -375,7 +342,7 @@ setInscriptions(inscriptionsCompletees);
         paiement.statut === "recu"
           ? total + Number(paiement.montant ?? 0)
           : total,
-      0
+      0,
     );
   }
   function ouvrirConfirmationPaiement(inscription) {
@@ -405,24 +372,24 @@ setInscriptions(inscriptionsCompletees);
       .filter(
         (item) =>
           item.groupe_id === inscription.groupe_id &&
-          item.statut === "liste_attente"
+          item.statut === "liste_attente",
       )
       .sort((a, b) => {
-  const differenceDate =
-    new Date(a.date_inscription).getTime() -
-    new Date(b.date_inscription).getTime();
+        const differenceDate =
+          new Date(a.date_inscription).getTime() -
+          new Date(b.date_inscription).getTime();
 
-  if (differenceDate !== 0) {
-    return differenceDate;
-  }
+        if (differenceDate !== 0) {
+          return differenceDate;
+        }
 
-  return a.id.localeCompare(b.id);
-});
+        return a.id.localeCompare(b.id);
+      });
     return inscriptionsAttenteGroupe[0]?.id === inscription.id;
   }
   function groupeAUnePlaceDisponible(groupeId) {
     const groupe = inscriptions.find(
-      (item) => item.groupe_id === groupeId
+      (item) => item.groupe_id === groupeId,
     )?.groupe;
     if (!groupe) {
       return false;
@@ -430,10 +397,7 @@ setInscriptions(inscriptionsCompletees);
     const placesOccupees = inscriptions.filter(
       (item) =>
         item.groupe_id === groupeId &&
-        (
-          item.statut === "en_attente_paiement" ||
-          item.statut === "confirmee"
-        )
+        (item.statut === "en_attente_paiement" || item.statut === "confirmee"),
     ).length;
     return placesOccupees < groupe.capacite;
   }
@@ -457,123 +421,114 @@ setInscriptions(inscriptionsCompletees);
       {
         p_inscription_id: inscription.id,
         p_accepter: accepter,
-      }
+      },
     );
     if (erreurValidation) {
       console.error(erreurValidation);
       setErreur(
         erreurValidation.message ||
-          "Impossible de traiter cette inscription conditionnelle."
+          "Impossible de traiter cette inscription conditionnelle.",
       );
       setValidationEnCours(null);
       return;
     }
     if (accepter) {
-  const { error: erreurCourriel } =
-    await supabase.functions.invoke(
-      "envoyer-courriel-inscription",
-      {
-        body: {
-          inscription_id: inscription.id,
-          origine: "validation_conditionnelle",
+      const { error: erreurCourriel } = await supabase.functions.invoke(
+        "envoyer-courriel-inscription",
+        {
+          body: {
+            inscription_id: inscription.id,
+            origine: "validation_conditionnelle",
+          },
         },
+      );
+
+      if (erreurCourriel) {
+        console.error(
+          "L'inscription conditionnelle a été acceptée, mais le courriel n'a pas pu être envoyé :",
+          erreurCourriel,
+        );
+
+        setErreur(
+          "L'inscription a été acceptée, mais le courriel de confirmation n'a pas pu être envoyé.",
+        );
       }
-    );
-
-  if (erreurCourriel) {
-    console.error(
-      "L'inscription conditionnelle a été acceptée, mais le courriel n'a pas pu être envoyé :",
-      erreurCourriel
-    );
-
-    setErreur(
-      "L'inscription a été acceptée, mais le courriel de confirmation n'a pas pu être envoyé."
-    );
-  }
-}
+    }
     setValidationEnCours(null);
     await chargerInscriptions();
   }
   async function offrirProchainePlace(inscription) {
-  if (!inscription?.groupe_id) {
-    return;
-  }
+    if (!inscription?.groupe_id) {
+      return;
+    }
 
-  const nomGroupe =
-    inscription.groupe?.nom ?? "ce groupe";
+    const nomGroupe = inscription.groupe?.nom ?? "ce groupe";
 
-  const confirmation = window.confirm(
-    `Offrir la prochaine place disponible dans ${nomGroupe} ?`
-  );
+    const confirmation = window.confirm(
+      `Offrir la prochaine place disponible dans ${nomGroupe} ?`,
+    );
 
-  if (!confirmation) {
-    return;
-  }
+    if (!confirmation) {
+      return;
+    }
 
-  setErreur("");
-  setOffrePlaceEnCours(inscription.groupe_id);
+    setErreur("");
+    setOffrePlaceEnCours(inscription.groupe_id);
 
-  const { data: offre, error: erreurOffre } =
-    await supabase.rpc(
+    const { data: offre, error: erreurOffre } = await supabase.rpc(
       "offrir_prochaine_place",
       {
         p_groupe_id: inscription.groupe_id,
-      }
+      },
     );
 
-  if (erreurOffre) {
-    console.error(erreurOffre);
+    if (erreurOffre) {
+      console.error(erreurOffre);
 
-    setErreur(
-      erreurOffre.message ||
-        "Impossible d'offrir la prochaine place."
-    );
+      setErreur(
+        erreurOffre.message || "Impossible d'offrir la prochaine place.",
+      );
 
-    setOffrePlaceEnCours(null);
-    return;
-  }
+      setOffrePlaceEnCours(null);
+      return;
+    }
 
-  const inscriptionPromue = Array.isArray(offre)
-    ? offre[0]
-    : offre;
+    const inscriptionPromue = Array.isArray(offre) ? offre[0] : offre;
 
-  if (inscriptionPromue?.inscription_id) {
-    const { error: erreurCourriel } =
-      await supabase.functions.invoke(
+    if (inscriptionPromue?.inscription_id) {
+      const { error: erreurCourriel } = await supabase.functions.invoke(
         "envoyer-courriel-inscription",
         {
           body: {
-            inscription_id:
-              inscriptionPromue.inscription_id,
+            inscription_id: inscriptionPromue.inscription_id,
           },
-        }
+        },
       );
 
-    if (erreurCourriel) {
-      console.error(
-        "La place a été offerte, mais le courriel n'a pas pu être envoyé :",
-        erreurCourriel
-      );
+      if (erreurCourriel) {
+        console.error(
+          "La place a été offerte, mais le courriel n'a pas pu être envoyé :",
+          erreurCourriel,
+        );
 
-      setErreur(
-        "La place a bien été offerte, mais le courriel au parent n'a pas pu être envoyé."
-      );
+        setErreur(
+          "La place a bien été offerte, mais le courriel au parent n'a pas pu être envoyé.",
+        );
+      }
     }
-  }
 
-  setOffrePlaceEnCours(null);
-  await chargerInscriptions();
-}
+    setOffrePlaceEnCours(null);
+    await chargerInscriptions();
+  }
   async function annulerInscription(inscription) {
     if (!inscription?.id) {
       return;
     }
-    const nomEnfant =
-      `${inscription.enfants?.prenom ?? ""} ${
-        inscription.enfants?.nom ?? ""
-      }`.trim();
+    const nomEnfant = `${inscription.enfants?.prenom ?? ""} ${
+      inscription.enfants?.nom ?? ""
+    }`.trim();
     const confirmation = window.confirm(
-      `Annuler l'inscription de ${nomEnfant || "cet enfant"} ?`
+      `Annuler l'inscription de ${nomEnfant || "cet enfant"} ?`,
     );
     if (!confirmation) {
       return;
@@ -581,7 +536,7 @@ setInscriptions(inscriptionsCompletees);
     const note =
       window.prompt(
         "Note administrative facultative pour cette annulation :",
-        ""
+        "",
       ) ?? "";
     setErreur("");
     setAnnulationEnCours(inscription.id);
@@ -590,13 +545,12 @@ setInscriptions(inscriptionsCompletees);
       {
         p_inscription_id: inscription.id,
         p_note: note.trim() || null,
-      }
+      },
     );
     if (erreurAnnulation) {
       console.error(erreurAnnulation);
       setErreur(
-        erreurAnnulation.message ||
-          "Impossible d'annuler l'inscription."
+        erreurAnnulation.message || "Impossible d'annuler l'inscription.",
       );
       setAnnulationEnCours(null);
       return;
@@ -609,84 +563,65 @@ setInscriptions(inscriptionsCompletees);
       return;
     }
     const montantRecu = Number(
-  inscription.situationFinanciere?.montant_recu ?? 0
-);
+      inscription.situationFinanciere?.montant_recu ?? 0,
+    );
     if (montantRecu <= 0) {
       return;
     }
     const montantParDefaut = (
-  inscription.statut === "annulee"
-    ? montantRecu
-    : Number(
-        inscription.situationFinanciere?.montant_a_rembourser ?? 0
-      )
-).toFixed(2);
-    const montantSaisi = window.prompt(
-      "Montant remboursé :",
-      montantParDefaut
-    );
+      inscription.statut === "annulee"
+        ? montantRecu
+        : Number(inscription.situationFinanciere?.montant_a_rembourser ?? 0)
+    ).toFixed(2);
+    const montantSaisi = window.prompt("Montant remboursé :", montantParDefaut);
     if (montantSaisi === null) {
       return;
     }
-    const montantRembourse = Number(
-      montantSaisi.replace(",", ".")
-    );
-    if (
-      !Number.isFinite(montantRembourse) ||
-      montantRembourse <= 0
-    ) {
-      setErreur(
-        "Le montant du remboursement est invalide."
-      );
+    const montantRembourse = Number(montantSaisi.replace(",", "."));
+    if (!Number.isFinite(montantRembourse) || montantRembourse <= 0) {
+      setErreur("Le montant du remboursement est invalide.");
       return;
     }
     if (
       inscription.statut !== "annulee" &&
       montantRembourse >
-      Number(
-      inscription.situationFinanciere?.montant_a_rembourser ?? 0
-      )
+        Number(inscription.situationFinanciere?.montant_a_rembourser ?? 0)
     ) {
-      setErreur(
-        "Le remboursement ne peut pas dépasser le trop-perçu."
-      );
+      setErreur("Le remboursement ne peut pas dépasser le trop-perçu.");
       return;
     }
 
     const note =
       window.prompt(
         "Note administrative facultative pour ce remboursement :",
-        ""
+        "",
       ) ?? "";
-    const nomEnfant =
-      `${inscription.enfants?.prenom ?? ""} ${
-        inscription.enfants?.nom ?? ""
-      }`.trim();
+    const nomEnfant = `${inscription.enfants?.prenom ?? ""} ${
+      inscription.enfants?.nom ?? ""
+    }`.trim();
     const confirmation = window.confirm(
       `Confirmer un remboursement de ${formaterMontant(
-        montantRembourse
-      )} pour ${nomEnfant || "cette inscription"} ?`
+        montantRembourse,
+      )} pour ${nomEnfant || "cette inscription"} ?`,
     );
     if (!confirmation) {
       return;
     }
     setErreur("");
     setRemboursementEnCours(inscription.id);
-    const { error: erreurRemboursement } =
-      await supabase.rpc(
-        "marquer_paiement_rembourse",
-        {
-          p_inscription_id: inscription.id,
-          p_montant_rembourse:
-            montantRembourse,
-          p_note: note.trim() || null,
-        }
-      );
+    const { error: erreurRemboursement } = await supabase.rpc(
+      "marquer_paiement_rembourse",
+      {
+        p_inscription_id: inscription.id,
+        p_montant_rembourse: montantRembourse,
+        p_note: note.trim() || null,
+      },
+    );
     if (erreurRemboursement) {
       console.error(erreurRemboursement);
       setErreur(
         erreurRemboursement.message ||
-          "Impossible de confirmer le remboursement."
+          "Impossible de confirmer le remboursement.",
       );
       setRemboursementEnCours(null);
       return;
@@ -722,7 +657,7 @@ setInscriptions(inscriptionsCompletees);
     }
 
     const idsCoursDestination = (coursDestination ?? []).map(
-      (coursItem) => coursItem.id
+      (coursItem) => coursItem.id,
     );
 
     if (idsCoursDestination.length === 0) {
@@ -747,7 +682,7 @@ setInscriptions(inscriptionsCompletees);
     }
 
     const coursParId = new Map(
-      (coursDestination ?? []).map((coursItem) => [coursItem.id, coursItem])
+      (coursDestination ?? []).map((coursItem) => [coursItem.id, coursItem]),
     );
 
     const destinations = (groupesDestination ?? [])
@@ -759,7 +694,7 @@ setInscriptions(inscriptionsCompletees);
       .sort((a, b) => {
         const comparaisonCours = (a.cours?.nom ?? "").localeCompare(
           b.cours?.nom ?? "",
-          "fr"
+          "fr",
         );
         if (comparaisonCours !== 0) {
           return comparaisonCours;
@@ -795,14 +730,14 @@ setInscriptions(inscriptionsCompletees);
       {
         p_inscription_id: inscriptionTransfert.id,
         p_groupe_destination_id: groupeDestinationId,
-      }
+      },
     );
 
     if (erreurPrevisualisation) {
       console.error(erreurPrevisualisation);
       setErreur(
         erreurPrevisualisation.message ||
-          "Impossible de prévisualiser le transfert."
+          "Impossible de prévisualiser le transfert.",
       );
       setChargementTransfert(false);
       return;
@@ -826,19 +761,17 @@ setInscriptions(inscriptionsCompletees);
       inscriptionTransfert.enfants?.nom ?? ""
     }`.trim();
 
-    const difference = Number(
-      previsualisationTransfert.difference_prix ?? 0
-    );
+    const difference = Number(previsualisationTransfert.difference_prix ?? 0);
 
     let incidenceFinanciere = "Aucune différence de prix.";
 
     if (difference > 0) {
       incidenceFinanciere = `${formaterMontant(
-        difference
+        difference,
       )} supplémentaires seront à facturer selon la situation financière de l'inscription.`;
     } else if (difference < 0) {
       incidenceFinanciere = `Le nouveau cours coûte ${formaterMontant(
-        Math.abs(difference)
+        Math.abs(difference),
       )} de moins. Un remboursement pourra être requis selon les montants déjà reçus.`;
     }
 
@@ -848,7 +781,7 @@ setInscriptions(inscriptionsCompletees);
           previsualisationTransfert.groupe_source_nom
         }\n→ ${previsualisationTransfert.cours_destination_nom} — ${
           previsualisationTransfert.groupe_destination_nom
-        }\n\n${incidenceFinanciere}`
+        }\n\n${incidenceFinanciere}`,
     );
 
     if (!confirmation) {
@@ -864,14 +797,13 @@ setInscriptions(inscriptionsCompletees);
         p_inscription_id: inscriptionTransfert.id,
         p_groupe_destination_id: groupeDestinationId,
         p_note: null,
-      }
+      },
     );
 
     if (erreurTransfert) {
       console.error(erreurTransfert);
       setErreur(
-        erreurTransfert.message ||
-          "Impossible d'effectuer le transfert."
+        erreurTransfert.message || "Impossible d'effectuer le transfert.",
       );
       setTransfertEnCours(false);
       return;
@@ -885,6 +817,275 @@ setInscriptions(inscriptionsCompletees);
     await chargerInscriptions();
   }
 
+  function reinitialiserInscriptionManuelle() {
+    setFamillesAdmin([]);
+    setRechercheFamille("");
+    setFamilleSelectionnee(null);
+    setEnfantManuelId("");
+    setParentManuelId("");
+    setCoursManuels([]);
+    setGroupesManuels([]);
+    setCoursManuelId("");
+    setGroupeManuelId("");
+    setAnneesScolaires([]);
+    setAnneeScolaireManuelleId("");
+    setNiveauxVolleyball([]);
+    setNiveauVolleyballManuelId("");
+    setNombreVersementsManuel(1);
+    setNoteInscriptionManuelle("");
+    setPrevisualisationManuelle(null);
+  }
+
+  async function ouvrirInscriptionManuelle() {
+    if (!saisonActive?.id) return;
+
+    setErreur("");
+    reinitialiserInscriptionManuelle();
+    setModalInscriptionManuelle(true);
+    setChargementInscriptionManuelle(true);
+
+    const [
+      famillesResultat,
+      coursResultat,
+      groupesResultat,
+      anneesResultat,
+      niveauxResultat,
+    ] = await Promise.all([
+      supabase.rpc("lister_familles_admin"),
+      supabase
+        .from("cours")
+        .select("id, nom, prix, demander_niveau_volleyball, actif")
+        .eq("saison_id", saisonActive.id)
+        .eq("actif", true)
+        .order("nom", { ascending: true }),
+      supabase
+        .from("groupes")
+        .select(
+          "id, nom, cours_id, capacite, ordre, actif, fusionne_vers_id"
+        )
+        .eq("actif", true)
+        .is("fusionne_vers_id", null)
+        .order("ordre", { ascending: true }),
+      supabase
+        .from("annees_scolaires")
+        .select("id, code, nom, ordre")
+        .eq("actif", true)
+        .order("ordre", { ascending: true }),
+      supabase
+        .from("niveaux_volleyball")
+        .select("id, code, nom, ordre")
+        .eq("actif", true)
+        .order("ordre", { ascending: true }),
+    ]);
+
+    const erreurChargement =
+      famillesResultat.error ||
+      coursResultat.error ||
+      groupesResultat.error ||
+      anneesResultat.error ||
+      niveauxResultat.error;
+
+    if (erreurChargement) {
+      console.error(erreurChargement);
+      setErreur(
+        erreurChargement.message ||
+          "Impossible de charger les données de l'inscription manuelle."
+      );
+      setChargementInscriptionManuelle(false);
+      return;
+    }
+
+    const idsCoursActifs = new Set(
+      (coursResultat.data ?? []).map((item) => item.id)
+    );
+
+    setFamillesAdmin(famillesResultat.data ?? []);
+    setCoursManuels(coursResultat.data ?? []);
+
+    setGroupesManuels(
+      (groupesResultat.data ?? []).filter((groupe) =>
+        idsCoursActifs.has(groupe.cours_id)
+      )
+    );
+
+    setAnneesScolaires(anneesResultat.data ?? []);
+    setNiveauxVolleyball(niveauxResultat.data ?? []);
+    setChargementInscriptionManuelle(false);
+  }
+
+  function fermerInscriptionManuelle() {
+    if (
+      chargementInscriptionManuelle ||
+      creationInscriptionManuelle
+    ) {
+      return;
+    }
+
+    setModalInscriptionManuelle(false);
+    reinitialiserInscriptionManuelle();
+  }
+
+  async function choisirFamilleManuelle(familleId) {
+    setErreur("");
+    setPrevisualisationManuelle(null);
+    setEnfantManuelId("");
+    setParentManuelId("");
+    setChargementInscriptionManuelle(true);
+
+    const { data, error } = await supabase.rpc(
+      "lire_famille_admin",
+      {
+        p_famille_id: familleId,
+      }
+    );
+
+    if (error) {
+      console.error(error);
+      setErreur(
+        error.message ||
+          "Impossible de charger la famille."
+      );
+      setChargementInscriptionManuelle(false);
+      return;
+    }
+
+    setFamilleSelectionnee(data ?? null);
+    setChargementInscriptionManuelle(false);
+  }
+
+  function choisirEnfantManuel(enfantId) {
+    setEnfantManuelId(enfantId);
+    setPrevisualisationManuelle(null);
+
+    const relations =
+      familleSelectionnee?.relations_parents_enfants ?? [];
+
+    const relationPrincipale = relations.find(
+      (relation) =>
+        relation.enfant_id === enfantId &&
+        relation.principal
+    );
+
+    const relationQuelconque = relations.find(
+      (relation) =>
+        relation.enfant_id === enfantId
+    );
+
+    const parentsActifs = (
+      familleSelectionnee?.parents ?? []
+    ).filter(
+      (parent) => parent.actif !== false
+    );
+
+    const parentParDefaut =
+      parentsActifs.find(
+        (parent) =>
+          parent.id === relationPrincipale?.parent_id
+      ) ||
+      parentsActifs.find(
+        (parent) =>
+          parent.id === relationQuelconque?.parent_id
+      ) ||
+      parentsActifs[0];
+
+    setParentManuelId(
+      parentParDefaut?.id ?? ""
+    );
+  }
+
+  async function previsualiserInscriptionManuelle() {
+    if (
+      !enfantManuelId ||
+      !parentManuelId ||
+      !groupeManuelId ||
+      !anneeScolaireManuelleId
+    ) {
+      setErreur(
+        "Sélectionnez l'enfant, le parent, le groupe et l'année scolaire."
+      );
+      return;
+    }
+
+    setErreur("");
+    setPrevisualisationManuelle(null);
+    setChargementInscriptionManuelle(true);
+
+    const { data, error } = await supabase.rpc(
+      "previsualiser_inscription_manuelle_admin",
+      {
+        p_enfant_id: enfantManuelId,
+        p_parent_id: parentManuelId,
+        p_groupe_id: groupeManuelId,
+        p_annee_scolaire_id:
+          anneeScolaireManuelleId,
+        p_niveau_volleyball_id:
+          niveauVolleyballManuelId || null,
+      }
+    );
+
+    if (error) {
+      console.error(error);
+      setErreur(
+        error.message ||
+          "Impossible de prévisualiser l'inscription."
+      );
+      setChargementInscriptionManuelle(false);
+      return;
+    }
+
+    setPrevisualisationManuelle(
+      data?.[0] ?? null
+    );
+    setChargementInscriptionManuelle(false);
+  }
+
+  async function creerInscriptionManuelle() {
+    if (
+      !previsualisationManuelle ||
+      previsualisationManuelle.deja_inscrit
+    ) {
+      return;
+    }
+
+    setErreur("");
+    setCreationInscriptionManuelle(true);
+
+    const { error } = await supabase.rpc(
+      "creer_inscription_manuelle_admin",
+      {
+        p_enfant_id: enfantManuelId,
+        p_parent_id: parentManuelId,
+        p_groupe_id: groupeManuelId,
+        p_annee_scolaire_id:
+          anneeScolaireManuelleId,
+        p_niveau_volleyball_id:
+          niveauVolleyballManuelId || null,
+        p_nombre_versements: Number(
+          nombreVersementsManuel
+        ),
+        p_note:
+          noteInscriptionManuelle.trim() ||
+          null,
+      }
+    );
+
+    if (error) {
+      console.error(error);
+      setErreur(
+        error.message ||
+          "Impossible de créer l'inscription manuelle."
+      );
+      setCreationInscriptionManuelle(false);
+      return;
+    }
+
+    setCreationInscriptionManuelle(false);
+    setModalInscriptionManuelle(false);
+    reinitialiserInscriptionManuelle();
+    await chargerInscriptions();
+  }
+
+
   async function confirmerPaiement() {
     if (!inscriptionPaiement) {
       return;
@@ -893,7 +1094,7 @@ setInscriptions(inscriptionsCompletees);
     setErreur("");
     const reference = referencePaiement.trim();
     const numeroVersement = Number(
-      inscriptionPaiement.paiementAConfirmer?.numero_versement ?? 1
+      inscriptionPaiement.paiementAConfirmer?.numero_versement ?? 1,
     );
     const { error: erreurConfirmation } = await supabase.rpc(
       "confirmer_paiement_recu",
@@ -901,13 +1102,12 @@ setInscriptions(inscriptionsCompletees);
         p_inscription_id: inscriptionPaiement.id,
         p_numero_versement: numeroVersement,
         p_reference: reference.length > 0 ? reference : null,
-      }
+      },
     );
     if (erreurConfirmation) {
       console.error(erreurConfirmation);
       setErreur(
-        erreurConfirmation.message ||
-          "Impossible de confirmer le paiement."
+        erreurConfirmation.message || "Impossible de confirmer le paiement.",
       );
       setConfirmationEnCours(false);
       return;
@@ -919,12 +1119,12 @@ setInscriptions(inscriptionsCompletees);
           inscription_id: inscriptionPaiement.id,
           numero_versement: numeroVersement,
         },
-      }
+      },
     );
     if (erreurCourriel) {
       console.error(
         "Le paiement a été enregistré, mais le courriel n'a pas pu être envoyé :",
-        erreurCourriel
+        erreurCourriel,
       );
     }
     setInscriptionPaiement(null);
@@ -937,11 +1137,16 @@ setInscriptions(inscriptionsCompletees);
       <div className="gestion-inscriptions-entete">
         <div>
           <h1>Inscriptions</h1>
-          <p>
-            Consultez les inscriptions de
-            la saison active.
-          </p>
+          <p>Consultez les inscriptions de la saison active.</p>
         </div>
+        <button
+  type="button"
+  className="admin-bouton admin-bouton-primaire"
+  onClick={ouvrirInscriptionManuelle}
+  disabled={chargement || !saisonActive}
+>
+  + Inscription manuelle
+</button>
         <button
           type="button"
           className="admin-bouton admin-bouton-secondaire"
@@ -951,83 +1156,43 @@ setInscriptions(inscriptionsCompletees);
           Actualiser
         </button>
       </div>
-      {erreur && (
-        <div className="gestion-inscriptions-erreur">
-          {erreur}
+      {erreur && <div className="gestion-inscriptions-erreur">{erreur}</div>}
+      {!chargement && !saisonActive && (
+        <div className="gestion-inscriptions-vide">
+          <h2>Aucune saison active</h2>
+          <p>Activez une saison avant de gérer les inscriptions.</p>
         </div>
       )}
-      {!chargement &&
-        !saisonActive && (
-          <div className="gestion-inscriptions-vide">
-            <h2>
-              Aucune saison active
-            </h2>
-            <p>
-              Activez une saison avant de
-              gérer les inscriptions.
-            </p>
-          </div>
-        )}
       {saisonActive && (
         <>
           <div className="gestion-inscriptions-saison">
-            <span>
-              Saison active
-            </span>
-            <strong>
-              {saisonActive.nom}
-            </strong>
+            <span>Saison active</span>
+            <strong>{saisonActive.nom}</strong>
           </div>
           <div className="gestion-inscriptions-statistiques">
             <div className="gestion-inscriptions-stat">
-              <span>
-                Inscriptions
-              </span>
-              <strong>
-                {statistiques.total}
-              </strong>
+              <span>Inscriptions</span>
+              <strong>{statistiques.total}</strong>
             </div>
             <div className="gestion-inscriptions-stat">
-              <span>
-                À valider
-              </span>
-              <strong>
-                {statistiques.attenteValidation}
-              </strong>
+              <span>À valider</span>
+              <strong>{statistiques.attenteValidation}</strong>
             </div>
             <div className="gestion-inscriptions-stat">
-              <span>
-                Consentements à compléter
-              </span>
-              <strong>
-                {statistiques.consentementsACompleter}
-              </strong>
+              <span>Consentements à compléter</span>
+              <strong>{statistiques.consentementsACompleter}</strong>
             </div>
             <div className="gestion-inscriptions-stat">
-              <span>
-                À payer
-              </span>
-              <strong>
-                {
-                  statistiques.attentePaiement
-                }
-              </strong>
+              <span>À payer</span>
+              <strong>{statistiques.attentePaiement}</strong>
             </div>
             <div className="gestion-inscriptions-stat">
-              <span>
-                Confirmées
-              </span>
-              <strong>
-                {statistiques.confirmees}
-              </strong>
+              <span>Confirmées</span>
+              <strong>{statistiques.confirmees}</strong>
             </div>
             <div className="gestion-inscriptions-stat">
-              <span>
-                Liste d'attente
-              </span>
-              <strong>
-                {statistiques.listeAttente}
-              </strong>
+              <span>Liste d'attente</span>
+              <strong>{statistiques.listeAttente}</strong>
             </div>
           </div>
           <div className="gestion-inscriptions-filtres">
@@ -1035,54 +1200,30 @@ setInscriptions(inscriptionsCompletees);
               type="search"
               value={recherche}
               placeholder="Rechercher un enfant, cours ou groupe..."
-              onChange={(event) =>
-                setRecherche(
-                  event.target.value
-                )
-              }
+              onChange={(event) => setRecherche(event.target.value)}
             />
             <select
               value={filtreStatut}
-              onChange={(event) =>
-                setFiltreStatut(
-                  event.target.value
-                )
-              }
+              onChange={(event) => setFiltreStatut(event.target.value)}
             >
-              <option value="toutes">
-                Toutes les inscriptions
-              </option>
+              <option value="toutes">Toutes les inscriptions</option>
               <option value="en_attente_validation">
                 En attente de validation
               </option>
               <option value="en_attente_paiement">
                 En attente de paiement
               </option>
-              <option value="confirmee">
-                Confirmées
-              </option>
-              <option value="liste_attente">
-                Liste d'attente
-              </option>
-              <option value="annulee">
-                Annulées
-              </option>
+              <option value="confirmee">Confirmées</option>
+              <option value="liste_attente">Liste d'attente</option>
+              <option value="annulee">Annulées</option>
             </select>
           </div>
           {chargement ? (
+            <div className="gestion-inscriptions-vide">Chargement...</div>
+          ) : inscriptionsFiltrees.length === 0 ? (
             <div className="gestion-inscriptions-vide">
-              Chargement...
-            </div>
-          ) : inscriptionsFiltrees.length ===
-            0 ? (
-            <div className="gestion-inscriptions-vide">
-              <h2>
-                Aucune inscription
-              </h2>
-              <p>
-                Aucune inscription ne
-                correspond aux critères.
-              </p>
+              <h2>Aucune inscription</h2>
+              <p>Aucune inscription ne correspond aux critères.</p>
             </div>
           ) : (
             <div className="gestion-inscriptions-table-conteneur">
@@ -1099,36 +1240,23 @@ setInscriptions(inscriptionsCompletees);
                   </tr>
                 </thead>
                 <tbody>
-                  {inscriptionsFiltrees.map(
-                    (inscription) => {
-                      const paiements = obtenirPaiements(inscription);
-                      const paiementARecevoir =
-                        obtenirProchainPaiement(inscription);
-                      const montantRecu =
-                        obtenirMontantRecu(inscription);
-                      return (
-                        <tr
-                          key={
-                            inscription.id
-                          }
-                        >
-                          <td>
-                            <div className="gestion-inscriptions-enfant">
-                              <strong>
-                                {
-                                  inscription
-                                    .enfants
-                                    ?.prenom
-                                }{" "}
-                                {
-                                  inscription
-                                    .enfants
-                                    ?.nom
-                                }
-                              </strong>
+                  {inscriptionsFiltrees.map((inscription) => {
+                    const paiements = obtenirPaiements(inscription);
+                    const paiementARecevoir =
+                      obtenirProchainPaiement(inscription);
+                    const montantRecu = obtenirMontantRecu(inscription);
+                    return (
+                      <tr key={inscription.id}>
+                        <td>
+                          <div className="gestion-inscriptions-enfant">
+                            <strong>
+                              {inscription.enfants?.prenom}{" "}
+                              {inscription.enfants?.nom}
+                            </strong>
 
-                              <div className="gestion-inscriptions-actions">
-                              {inscription.statut === "en_attente_validation" && (
+                            <div className="gestion-inscriptions-actions">
+                              {inscription.statut ===
+                                "en_attente_validation" && (
                                 <>
                                   <button
                                     type="button"
@@ -1136,10 +1264,12 @@ setInscriptions(inscriptionsCompletees);
                                     onClick={() =>
                                       validerInscriptionConditionnelle(
                                         inscription,
-                                        true
+                                        true,
                                       )
                                     }
-                                    disabled={validationEnCours === inscription.id}
+                                    disabled={
+                                      validationEnCours === inscription.id
+                                    }
                                   >
                                     {validationEnCours === inscription.id
                                       ? "Traitement..."
@@ -1151,238 +1281,675 @@ setInscriptions(inscriptionsCompletees);
                                     onClick={() =>
                                       validerInscriptionConditionnelle(
                                         inscription,
-                                        false
+                                        false,
                                       )
                                     }
-                                    disabled={validationEnCours === inscription.id}
+                                    disabled={
+                                      validationEnCours === inscription.id
+                                    }
                                   >
                                     Refuser
                                   </button>
                                 </>
                               )}
-                              
+
                               {inscription.statut !== "annulee" &&
-                              inscription.statut !== "liste_attente" &&
-                              paiementARecevoir &&
-Number(
-  inscription.situationFinanciere?.solde_a_recevoir ?? 0
-) > 0 &&
-Number(
-  inscription.situationFinanciere?.montant_a_rembourser ?? 0
-) <= 0 && (
-                                <button
-                                  type="button"
-                                  className="admin-bouton admin-bouton-primaire"
-                                  onClick={() =>
-                                    ouvrirConfirmationPaiement(inscription)
-                                  }
-                                >
-                                  Confirmer versement{" "}
-                                  {paiementARecevoir.numero_versement ?? 1}/
-                                  {inscription.nombre_versements ?? paiements.length}
-                                </button>
-                              )}
-                              {inscription.statut ===
-                                "liste_attente" &&
-                                estPremiereEnAttenteDuGroupe(
-                                  inscription
-                                ) && (
+                                inscription.statut !== "liste_attente" &&
+                                paiementARecevoir &&
+                                Number(
+                                  inscription.situationFinanciere
+                                    ?.solde_a_recevoir ?? 0,
+                                ) > 0 &&
+                                Number(
+                                  inscription.situationFinanciere
+                                    ?.montant_a_rembourser ?? 0,
+                                ) <= 0 && (
                                   <button
                                     type="button"
                                     className="admin-bouton admin-bouton-primaire"
                                     onClick={() =>
-                                      offrirProchainePlace(
-                                        inscription
-                                      )
+                                      ouvrirConfirmationPaiement(inscription)
+                                    }
+                                  >
+                                    Confirmer versement{" "}
+                                    {paiementARecevoir.numero_versement ?? 1}/
+                                    {inscription.nombre_versements ??
+                                      paiements.length}
+                                  </button>
+                                )}
+                              {inscription.statut === "liste_attente" &&
+                                estPremiereEnAttenteDuGroupe(inscription) && (
+                                  <button
+                                    type="button"
+                                    className="admin-bouton admin-bouton-primaire"
+                                    onClick={() =>
+                                      offrirProchainePlace(inscription)
                                     }
                                     disabled={
                                       offrePlaceEnCours ===
                                         inscription.groupe_id ||
                                       !groupeAUnePlaceDisponible(
-                                        inscription.groupe_id
+                                        inscription.groupe_id,
                                       )
                                     }
                                     title={
                                       groupeAUnePlaceDisponible(
-                                        inscription.groupe_id
+                                        inscription.groupe_id,
                                       )
                                         ? "Offrir la prochaine place de la liste d'attente"
                                         : "Aucune place disponible dans ce groupe"
                                     }
                                   >
-                                    {offrePlaceEnCours ===
-                                    inscription.groupe_id
+                                    {offrePlaceEnCours === inscription.groupe_id
                                       ? "Offre en cours..."
                                       : groupeAUnePlaceDisponible(
-                                          inscription.groupe_id
-                                        )
-                                      ? "Offrir la prochaine place"
-                                      : "Groupe complet"}
+                                            inscription.groupe_id,
+                                          )
+                                        ? "Offrir la prochaine place"
+                                        : "Groupe complet"}
                                   </button>
                                 )}
                               {inscription.statut !== "annulee" &&
-                              inscription.statut !== "en_attente_validation" &&
-                              !inscription.estAbsorbee && (
-                                <button
-                                  type="button"
-                                  className="admin-bouton admin-bouton-secondaire"
-                                  onClick={() => ouvrirTransfert(inscription)}
-                                >
-                                  Transférer
-                                </button>
-                              )}
+                                inscription.statut !==
+                                  "en_attente_validation" &&
+                                !inscription.estAbsorbee && (
+                                  <button
+                                    type="button"
+                                    className="admin-bouton admin-bouton-secondaire"
+                                    onClick={() => ouvrirTransfert(inscription)}
+                                  >
+                                    Transférer
+                                  </button>
+                                )}
                               {inscription.statut !== "annulee" &&
-                              inscription.statut !== "en_attente_validation" && (
-                                <button
-                                  type="button"
-                                  className="admin-bouton admin-bouton-secondaire"
-                                  onClick={() =>
-                                    annulerInscription(inscription)
-                                  }
-                                  disabled={
-                                    annulationEnCours ===
-                                    inscription.id
-                                  }
-                                >
-                                  {annulationEnCours ===
-                                  inscription.id
-                                    ? "Annulation..."
-                                    : "Annuler l'inscription"}
-                                </button>
-                              )}
-                              {!inscription.estAbsorbee && (
-  Number(
-    inscription.situationFinanciere?.montant_a_rembourser ?? 0
-  ) > 0 ||
-  (
-    inscription.statut === "annulee" &&
-    Number(
-      inscription.situationFinanciere?.montant_recu ?? 0
-    ) > 0
-  )
-) && (
+                                inscription.statut !==
+                                  "en_attente_validation" && (
+                                  <button
+                                    type="button"
+                                    className="admin-bouton admin-bouton-secondaire"
+                                    onClick={() =>
+                                      annulerInscription(inscription)
+                                    }
+                                    disabled={
+                                      annulationEnCours === inscription.id
+                                    }
+                                  >
+                                    {annulationEnCours === inscription.id
+                                      ? "Annulation..."
+                                      : "Annuler l'inscription"}
+                                  </button>
+                                )}
+                              {!inscription.estAbsorbee &&
+                                (Number(
+                                  inscription.situationFinanciere
+                                    ?.montant_a_rembourser ?? 0,
+                                ) > 0 ||
+                                  (inscription.statut === "annulee" &&
+                                    Number(
+                                      inscription.situationFinanciere
+                                        ?.montant_recu ?? 0,
+                                    ) > 0)) && (
                                   <button
                                     type="button"
                                     className="admin-bouton admin-bouton-primaire"
                                     onClick={() =>
-                                      marquerPaiementRembourse(
-                                        inscription
-                                      )
+                                      marquerPaiementRembourse(inscription)
                                     }
                                     disabled={
-                                      remboursementEnCours ===
-                                      inscription.id
+                                      remboursementEnCours === inscription.id
                                     }
                                   >
-                                    {remboursementEnCours ===
-                                    inscription.id
+                                    {remboursementEnCours === inscription.id
                                       ? "Remboursement..."
                                       : "Marquer remboursé"}
                                   </button>
                                 )}
-                              {inscription.statut ===
-  "annulee" &&
-(inscription.estAbsorbee ||
-                              (montantRecu <= 0 ||
-                                Number(inscription.montant_rembourse ?? 0) >=
-                                  montantRecu)) && (
+                              {inscription.statut === "annulee" &&
+                                (inscription.estAbsorbee ||
+                                  montantRecu <= 0 ||
+                                  Number(inscription.montant_rembourse ?? 0) >=
+                                    montantRecu) && (
                                   <span className="gestion-inscriptions-pas-action">
                                     —
                                   </span>
                                 )}
                             </div>
-                            </div>
-                          </td>
-                          <td>
-                            {inscription
-                              .cours?.nom ??
-                              "—"}
-                          </td>
-                          <td>
-                            {inscription
-                              .groupe?.nom ??
-                              "—"}
-                          </td>
-                          <td>
-                            <span
-                              className={`gestion-inscriptions-statut statut-${inscription.statut}`}
-                            >
-                              {
-                                LIBELLES_STATUT[
-                                  inscription
-                                    .statut
-                                ] ??
-                                inscription.statut
-                              }
-                            </span>
-                          </td>
-                          <td>
-                            {formaterMontant(
-                              inscription
-                                .prix_facture
-                            )}
-                          </td>
-                          <td>
-                            {paiements.length > 0 ? (
-                              <div className="gestion-inscriptions-paiement">
-                                {paiements.map((paiement) => (
-                                  <div
-                                    key={paiement.id}
-                                    className="gestion-inscriptions-paiement-ligne"
+                          </div>
+                        </td>
+                        <td>{inscription.cours?.nom ?? "—"}</td>
+                        <td>{inscription.groupe?.nom ?? "—"}</td>
+                        <td>
+                          <span
+                            className={`gestion-inscriptions-statut statut-${inscription.statut}`}
+                          >
+                            {LIBELLES_STATUT[inscription.statut] ??
+                              inscription.statut}
+                          </span>
+                        </td>
+                        <td>{formaterMontant(inscription.prix_facture)}</td>
+                        <td>
+                          {paiements.length > 0 ? (
+                            <div className="gestion-inscriptions-paiement">
+                              {paiements.map((paiement) => (
+                                <div
+                                  key={paiement.id}
+                                  className="gestion-inscriptions-paiement-ligne"
+                                >
+                                  <span>
+                                    Versement {paiement.numero_versement ?? 1}/
+                                    {inscription.nombre_versements ??
+                                      paiements.length}
+                                  </span>
+                                  <span
+                                    className={`gestion-inscriptions-statut paiement-${paiement.statut}`}
                                   >
-                                    <span>
-                                      Versement {paiement.numero_versement ?? 1}/
-                                      {inscription.nombre_versements ?? paiements.length}
-                                    </span>
-                                    <span
-                                      className={`gestion-inscriptions-statut paiement-${paiement.statut}`}
-                                    >
-                                      {LIBELLES_PAIEMENT[paiement.statut] ??
-                                        paiement.statut}
-                                    </span>
-                                    <small>
-                                      {formaterMontant(paiement.montant)}
-                                      {paiement.reference
-                                        ? ` — ${paiement.reference}`
-                                        : ""}
-                                    </small>
-                                  </div>
-                                ))}
-                                {Number(inscription.montant_rembourse ?? 0) > 0 && (
+                                    {LIBELLES_PAIEMENT[paiement.statut] ??
+                                      paiement.statut}
+                                  </span>
                                   <small>
-                                    Remboursé :{" "}
-                                    {formaterMontant(
-                                      inscription.montant_rembourse
-                                    )}
+                                    {formaterMontant(paiement.montant)}
+                                    {paiement.reference
+                                      ? ` — ${paiement.reference}`
+                                      : ""}
                                   </small>
-                                )}
-                              </div>
-                            ) : inscription.statut === "liste_attente" ||
-                              inscription.statut === "en_attente_validation" ? (
-                              <span className="gestion-inscriptions-pas-paiement">
-                                Aucun paiement
-                              </span>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-                          <td>
-                            {formaterDate(
-                              inscription
-                                .date_inscription
-                            )}
-                          </td>
-
-                        </tr>
-                      );
-                    }
-                  )}
+                                </div>
+                              ))}
+                              {Number(inscription.montant_rembourse ?? 0) >
+                                0 && (
+                                <small>
+                                  Remboursé :{" "}
+                                  {formaterMontant(
+                                    inscription.montant_rembourse,
+                                  )}
+                                </small>
+                              )}
+                            </div>
+                          ) : inscription.statut === "liste_attente" ||
+                            inscription.statut === "en_attente_validation" ? (
+                            <span className="gestion-inscriptions-pas-paiement">
+                              Aucun paiement
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td>{formaterDate(inscription.date_inscription)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
           )}
         </>
       )}
+
+      {modalInscriptionManuelle && (
+        <div
+          className="gestion-inscriptions-modal-fond"
+          onMouseDown={fermerInscriptionManuelle}
+        >
+          <div
+            className="gestion-inscriptions-modal gestion-inscriptions-modal-large"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <h2>Inscription manuelle</h2>
+
+            <p>
+              Ajoutez un enfant déjà existant à un groupe, même après la fermeture
+              des inscriptions. Le parent devra compléter les consentements avant
+              que la facturation soit créée.
+            </p>
+
+            {chargementInscriptionManuelle && !familleSelectionnee && (
+              <p>Chargement...</p>
+            )}
+
+            <label className="gestion-inscriptions-champ">
+              <span>Rechercher une famille ou un enfant</span>
+              <input
+                type="search"
+                value={rechercheFamille}
+                onChange={(event) =>
+                  setRechercheFamille(event.target.value)
+                }
+                placeholder="Nom de famille ou nom de l'enfant"
+                disabled={chargementInscriptionManuelle}
+              />
+            </label>
+
+            {rechercheFamille.trim() && !familleSelectionnee && (
+              <div className="gestion-inscriptions-resultats-familles">
+                {famillesAdmin
+                  .filter((famille) => {
+                    const texte = rechercheFamille
+                      .trim()
+                      .toLowerCase();
+
+                    return (
+                      (famille.nom_famille ?? "")
+                        .toLowerCase()
+                        .includes(texte) ||
+                      (famille.noms_enfants ?? "")
+                        .toLowerCase()
+                        .includes(texte)
+                    );
+                  })
+                  .slice(0, 12)
+                  .map((famille) => (
+                    <button
+                      key={famille.famille_id}
+                      type="button"
+                      className="gestion-inscriptions-resultat-famille"
+                      onClick={() =>
+                        choisirFamilleManuelle(
+                          famille.famille_id
+                        )
+                      }
+                    >
+                      <strong>
+                        {famille.nom_famille || "Famille"}
+                      </strong>
+                      <span>
+                        {famille.noms_enfants ||
+                          "Aucun enfant"}
+                      </span>
+                    </button>
+                  ))}
+              </div>
+            )}
+
+            {familleSelectionnee && (
+              <>
+                <div className="gestion-inscriptions-modal-info">
+                  <strong>Famille sélectionnée</strong>
+
+                  <span>
+                    {(familleSelectionnee.enfants ?? [])
+                      .map(
+                        (enfant) =>
+                          `${enfant.prenom} ${enfant.nom}`
+                      )
+                      .join(", ")}
+                  </span>
+
+                  <button
+                    type="button"
+                    className="admin-bouton admin-bouton-secondaire"
+                    onClick={() => {
+                      setFamilleSelectionnee(null);
+                      setEnfantManuelId("");
+                      setParentManuelId("");
+                      setPrevisualisationManuelle(null);
+                    }}
+                  >
+                    Changer de famille
+                  </button>
+                </div>
+
+                <div className="gestion-inscriptions-grille-formulaire">
+                  <label className="gestion-inscriptions-champ">
+                    <span>Enfant</span>
+
+                    <select
+                      value={enfantManuelId}
+                      onChange={(event) =>
+                        choisirEnfantManuel(
+                          event.target.value
+                        )
+                      }
+                    >
+                      <option value="">
+                        Sélectionner
+                      </option>
+
+                      {(familleSelectionnee.enfants ?? [])
+                        .filter(
+                          (enfant) =>
+                            enfant.actif !== false
+                        )
+                        .map((enfant) => (
+                          <option
+                            key={enfant.id}
+                            value={enfant.id}
+                          >
+                            {enfant.prenom} {enfant.nom}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+
+                  <label className="gestion-inscriptions-champ">
+                    <span>Parent responsable</span>
+
+                    <select
+                      value={parentManuelId}
+                      onChange={(event) => {
+                        setParentManuelId(
+                          event.target.value
+                        );
+                        setPrevisualisationManuelle(null);
+                      }}
+                      disabled={!enfantManuelId}
+                    >
+                      <option value="">
+                        Sélectionner
+                      </option>
+
+                      {(familleSelectionnee.parents ?? [])
+                        .filter(
+                          (parent) =>
+                            parent.actif !== false
+                        )
+                        .map((parent) => (
+                          <option
+                            key={parent.id}
+                            value={parent.id}
+                          >
+                            {parent.prenom} {parent.nom}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+
+                  <label className="gestion-inscriptions-champ">
+                    <span>Cours</span>
+
+                    <select
+                      value={coursManuelId}
+                      onChange={(event) => {
+                        setCoursManuelId(
+                          event.target.value
+                        );
+                        setGroupeManuelId("");
+                        setNiveauVolleyballManuelId("");
+                        setPrevisualisationManuelle(null);
+                      }}
+                    >
+                      <option value="">
+                        Sélectionner
+                      </option>
+
+                      {coursManuels.map((cours) => (
+                        <option
+                          key={cours.id}
+                          value={cours.id}
+                        >
+                          {cours.nom} —{" "}
+                          {formaterMontant(cours.prix)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="gestion-inscriptions-champ">
+                    <span>Groupe</span>
+
+                    <select
+                      value={groupeManuelId}
+                      onChange={(event) => {
+                        setGroupeManuelId(
+                          event.target.value
+                        );
+                        setPrevisualisationManuelle(null);
+                      }}
+                      disabled={!coursManuelId}
+                    >
+                      <option value="">
+                        Sélectionner
+                      </option>
+
+                      {groupesManuels
+                        .filter(
+                          (groupe) =>
+                            groupe.cours_id ===
+                            coursManuelId
+                        )
+                        .map((groupe) => (
+                          <option
+                            key={groupe.id}
+                            value={groupe.id}
+                          >
+                            {groupe.nom} — capacité{" "}
+                            {groupe.capacite}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+
+                  <label className="gestion-inscriptions-champ">
+                    <span>Année scolaire</span>
+
+                    <select
+                      value={anneeScolaireManuelleId}
+                      onChange={(event) => {
+                        setAnneeScolaireManuelleId(
+                          event.target.value
+                        );
+                        setPrevisualisationManuelle(null);
+                      }}
+                    >
+                      <option value="">
+                        Sélectionner
+                      </option>
+
+                      {anneesScolaires.map((annee) => (
+                        <option
+                          key={annee.id}
+                          value={annee.id}
+                        >
+                          {annee.nom}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {coursManuels.find(
+                    (cours) =>
+                      cours.id === coursManuelId
+                  )?.demander_niveau_volleyball && (
+                    <label className="gestion-inscriptions-champ">
+                      <span>Niveau de volleyball</span>
+
+                      <select
+                        value={niveauVolleyballManuelId}
+                        onChange={(event) => {
+                          setNiveauVolleyballManuelId(
+                            event.target.value
+                          );
+                          setPrevisualisationManuelle(null);
+                        }}
+                      >
+                        <option value="">
+                          Sélectionner
+                        </option>
+
+                        {niveauxVolleyball.map(
+                          (niveau) => (
+                            <option
+                              key={niveau.id}
+                              value={niveau.id}
+                            >
+                              {niveau.nom}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </label>
+                  )}
+
+                  <label className="gestion-inscriptions-champ">
+                    <span>Nombre de versements</span>
+
+                    <select
+                      value={nombreVersementsManuel}
+                      onChange={(event) =>
+                        setNombreVersementsManuel(
+                          Number(event.target.value)
+                        )
+                      }
+                    >
+                      <option value={1}>
+                        1 versement
+                      </option>
+                      <option value={2}>
+                        2 versements
+                      </option>
+                    </select>
+                  </label>
+                </div>
+
+                <label className="gestion-inscriptions-champ">
+                  <span>
+                    Note administrative (facultative)
+                  </span>
+
+                  <textarea
+                    value={noteInscriptionManuelle}
+                    onChange={(event) =>
+                      setNoteInscriptionManuelle(
+                        event.target.value
+                      )
+                    }
+                    rows={3}
+                    placeholder="Ex. Inscription autorisée après la fermeture du groupe."
+                  />
+                </label>
+
+                {previsualisationManuelle && (
+                  <div className="gestion-inscriptions-modal-info">
+                    <strong>
+                      {previsualisationManuelle.enfant_nom} —{" "}
+                      {previsualisationManuelle.cours_nom}
+                    </strong>
+
+                    <span>
+                      Parent :{" "}
+                      {previsualisationManuelle.parent_nom}
+                    </span>
+
+                    <span>
+                      Groupe :{" "}
+                      {previsualisationManuelle.groupe_nom}
+                    </span>
+
+                    <span>
+                      Prix :{" "}
+                      {formaterMontant(
+                        previsualisationManuelle.prix
+                      )}
+                    </span>
+
+                    <span>
+                      Occupation :{" "}
+                      {previsualisationManuelle.places_occupees}/
+                      {previsualisationManuelle.capacite} —{" "}
+                      {previsualisationManuelle.places_restantes}{" "}
+                      place(s) restante(s)
+                    </span>
+
+                    {previsualisationManuelle.deja_inscrit && (
+                      <strong>
+                        ⚠ Cet enfant possède déjà une
+                        inscription active dans ce groupe.
+                      </strong>
+                    )}
+
+                    {previsualisationManuelle.avertissement_capacite && (
+                      <strong>
+                        ⚠ Le groupe est complet. Cette
+                        inscription dépassera la capacité.
+                      </strong>
+                    )}
+
+                    {previsualisationManuelle.avertissement_annee_scolaire && (
+                      <strong>
+                        ⚠ L'année scolaire ne correspond pas
+                        aux critères habituels du cours.
+                      </strong>
+                    )}
+
+                    {previsualisationManuelle.avertissement_sexe && (
+                      <strong>
+                        ⚠ Le sexe ne correspond pas aux
+                        critères habituels du cours.
+                      </strong>
+                    )}
+
+                    {previsualisationManuelle.avertissement_niveau && (
+                      <strong>
+                        ⚠ Le niveau de volleyball doit être
+                        vérifié.
+                      </strong>
+                    )}
+
+                    {!previsualisationManuelle.deja_inscrit && (
+                      <span>
+                        Après création, le statut sera
+                        « Consentements à compléter ».
+                      </span>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="gestion-inscriptions-modal-actions">
+              <button
+                type="button"
+                className="admin-bouton admin-bouton-secondaire"
+                onClick={fermerInscriptionManuelle}
+                disabled={
+                  chargementInscriptionManuelle ||
+                  creationInscriptionManuelle
+                }
+              >
+                Fermer
+              </button>
+
+              {familleSelectionnee &&
+                !previsualisationManuelle && (
+                  <button
+                    type="button"
+                    className="admin-bouton admin-bouton-primaire"
+                    onClick={
+                      previsualiserInscriptionManuelle
+                    }
+                    disabled={
+                      chargementInscriptionManuelle ||
+                      !enfantManuelId ||
+                      !parentManuelId ||
+                      !groupeManuelId ||
+                      !anneeScolaireManuelleId
+                    }
+                  >
+                    {chargementInscriptionManuelle
+                      ? "Chargement..."
+                      : "Prévisualiser"}
+                  </button>
+                )}
+
+              {previsualisationManuelle && (
+                <button
+                  type="button"
+                  className="admin-bouton admin-bouton-primaire"
+                  onClick={creerInscriptionManuelle}
+                  disabled={
+                    creationInscriptionManuelle ||
+                    previsualisationManuelle.deja_inscrit
+                  }
+                >
+                  {creationInscriptionManuelle
+                    ? "Création..."
+                    : "Confirmer l'inscription"}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+
       {inscriptionTransfert && (
         <div
           className="gestion-inscriptions-modal-fond"
@@ -1405,7 +1972,8 @@ Number(
               <span>{inscriptionTransfert.cours?.nom ?? "—"}</span>
               <span>{inscriptionTransfert.groupe?.nom ?? "—"}</span>
               <strong>
-                Prix actuel : {formaterMontant(inscriptionTransfert.prix_facture)}
+                Prix actuel :{" "}
+                {formaterMontant(inscriptionTransfert.prix_facture)}
               </strong>
             </div>
             <label className="gestion-inscriptions-champ">
@@ -1427,7 +1995,9 @@ Number(
               </select>
             </label>
             {!chargementTransfert && groupesTransfert.length === 0 && (
-              <p>Aucun autre groupe actif n'est disponible dans cette saison.</p>
+              <p>
+                Aucun autre groupe actif n'est disponible dans cette saison.
+              </p>
             )}
             {previsualisationTransfert && (
               <div className="gestion-inscriptions-modal-info">
@@ -1441,8 +2011,8 @@ Number(
                   {previsualisationTransfert.groupe_destination_nom}
                 </strong>
                 <span>
-                  Prix : {formaterMontant(previsualisationTransfert.prix_avant)} →{" "}
-                  {formaterMontant(previsualisationTransfert.prix_apres)}
+                  Prix : {formaterMontant(previsualisationTransfert.prix_avant)}{" "}
+                  → {formaterMontant(previsualisationTransfert.prix_apres)}
                 </span>
                 <span>
                   Différence :{" "}
@@ -1454,10 +2024,14 @@ Number(
                   {previsualisationTransfert.capacite_destination}
                 </span>
                 {previsualisationTransfert.depasse_capacite && (
-                  <strong>⚠ Le transfert dépassera la capacité du groupe.</strong>
+                  <strong>
+                    ⚠ Le transfert dépassera la capacité du groupe.
+                  </strong>
                 )}
                 {previsualisationTransfert.avertissement_sexe && (
-                  <strong>⚠ Le sexe ne correspond pas aux critères habituels.</strong>
+                  <strong>
+                    ⚠ Le sexe ne correspond pas aux critères habituels.
+                  </strong>
                 )}
                 {previsualisationTransfert.avertissement_annee_scolaire && (
                   <strong>
@@ -1466,7 +2040,8 @@ Number(
                 )}
                 {previsualisationTransfert.avertissement_niveau && (
                   <strong>
-                    ⚠ Le niveau de volleyball ne correspond pas aux critères habituels.
+                    ⚠ Le niveau de volleyball ne correspond pas aux critères
+                    habituels.
                   </strong>
                 )}
               </div>
@@ -1508,85 +2083,49 @@ Number(
       {inscriptionPaiement && (
         <div
           className="gestion-inscriptions-modal-fond"
-          onMouseDown={
-            fermerConfirmationPaiement
-          }
+          onMouseDown={fermerConfirmationPaiement}
         >
           <div
             className="gestion-inscriptions-modal"
-            onMouseDown={(event) =>
-              event.stopPropagation()
-            }
+            onMouseDown={(event) => event.stopPropagation()}
           >
-            <h2>
-              Confirmer le paiement
-            </h2>
+            <h2>Confirmer le paiement</h2>
             <p>
-              Confirmer le paiement reçu
-              pour{" "}
+              Confirmer le paiement reçu pour{" "}
               <strong>
-                {
-                  inscriptionPaiement
-                    .enfants?.prenom
-                }{" "}
-                {
-                  inscriptionPaiement
-                    .enfants?.nom
-                }
+                {inscriptionPaiement.enfants?.prenom}{" "}
+                {inscriptionPaiement.enfants?.nom}
               </strong>
               .
             </p>
             <div className="gestion-inscriptions-modal-info">
-              <span>
-                {
-                  inscriptionPaiement
-                    .cours?.nom
-                }
-              </span>
-              <span>
-                {
-                  inscriptionPaiement
-                    .groupe?.nom
-                }
-              </span>
+              <span>{inscriptionPaiement.cours?.nom}</span>
+              <span>{inscriptionPaiement.groupe?.nom}</span>
               <strong>
                 Versement{" "}
                 {inscriptionPaiement.paiementAConfirmer?.numero_versement ?? 1}/
                 {inscriptionPaiement.nombre_versements ?? 1} —{" "}
                 {formaterMontant(
-                  inscriptionPaiement.paiementAConfirmer?.montant
+                  inscriptionPaiement.paiementAConfirmer?.montant,
                 )}
               </strong>
             </div>
             <label className="gestion-inscriptions-champ">
-              <span>
-                Référence Interac
-                facultative
-              </span>
+              <span>Référence Interac facultative</span>
               <input
                 type="text"
                 value={referencePaiement}
-                onChange={(event) =>
-                  setReferencePaiement(
-                    event.target.value
-                  )
-                }
+                onChange={(event) => setReferencePaiement(event.target.value)}
                 placeholder="Ex. INS-2026-0042"
-                disabled={
-                  confirmationEnCours
-                }
+                disabled={confirmationEnCours}
               />
             </label>
             <div className="gestion-inscriptions-modal-actions">
               <button
                 type="button"
                 className="admin-bouton admin-bouton-secondaire"
-                onClick={
-                  fermerConfirmationPaiement
-                }
-                disabled={
-                  confirmationEnCours
-                }
+                onClick={fermerConfirmationPaiement}
+                disabled={confirmationEnCours}
               >
                 Annuler
               </button>
@@ -1594,9 +2133,7 @@ Number(
                 type="button"
                 className="admin-bouton admin-bouton-primaire"
                 onClick={confirmerPaiement}
-                disabled={
-                  confirmationEnCours
-                }
+                disabled={confirmationEnCours}
               >
                 {confirmationEnCours
                   ? "Confirmation..."

@@ -487,9 +487,10 @@
   }
 
   .gestion-inscriptions-modal {
-    padding: 20px;
-    max-height: calc(100vh - 32px);
-  }
+  padding: 20px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
 
   .gestion-inscriptions-modal-actions {
     flex-direction: column-reverse;
@@ -497,5 +498,123 @@
 
   .gestion-inscriptions-modal-actions button {
     width: 100%;
+  }
+}
+/* =========================================================
+   Inscription manuelle
+   ========================================================= */
+
+.gestion-inscriptions-entete-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.gestion-inscriptions-modal-large {
+  max-width: 760px;
+}
+
+.gestion-inscriptions-grille-formulaire {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+
+  margin-bottom: 18px;
+}
+
+.gestion-inscriptions-grille-formulaire select,
+.gestion-inscriptions-champ select,
+.gestion-inscriptions-champ textarea {
+  width: 100%;
+  box-sizing: border-box;
+
+  padding: 11px 12px;
+
+  color: #344054;
+  background: #ffffff;
+
+  border: 1px solid #cccccc;
+  border-radius: 8px;
+
+  font: inherit;
+}
+
+.gestion-inscriptions-champ textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.gestion-inscriptions-grille-formulaire select:focus,
+.gestion-inscriptions-champ select:focus,
+.gestion-inscriptions-champ textarea:focus {
+  outline: none;
+  border-color: #666666;
+}
+
+.gestion-inscriptions-resultats-familles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  max-height: 260px;
+  overflow-y: auto;
+
+  margin: 10px 0 20px;
+  padding: 6px;
+
+  background: #f8fafc;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
+
+.gestion-inscriptions-resultat-famille {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+
+  width: 100%;
+
+  padding: 11px 12px;
+
+  color: #344054;
+  background: #ffffff;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+
+  font: inherit;
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.gestion-inscriptions-resultat-famille:hover {
+  background: #f2f4f7;
+  border-color: #cbd5e1;
+}
+
+.gestion-inscriptions-resultat-famille strong {
+  color: #102652;
+}
+
+.gestion-inscriptions-resultat-famille span {
+  color: #667085;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 700px) {
+  .gestion-inscriptions-entete-actions {
+    width: 100%;
+  }
+
+  .gestion-inscriptions-entete-actions .admin-bouton {
+    flex: 1;
+  }
+
+  .gestion-inscriptions-grille-formulaire {
+    grid-template-columns: 1fr;
   }
 }
