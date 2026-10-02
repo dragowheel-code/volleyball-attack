@@ -299,6 +299,7 @@ function GestionInscriptions() {
       ).length,
     };
   }, [inscriptions]);
+  
   function formaterMontant(montant) {
     const valeur = Number(montant ?? 0);
     return new Intl.NumberFormat("fr-CA", {

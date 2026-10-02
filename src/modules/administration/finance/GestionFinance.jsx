@@ -248,7 +248,8 @@ function GestionFinance() {
       );
 
       if (
-        transaction.statut === "a_recevoir"
+        transaction.statut === "a_recevoir" &&
+        transaction.statutInscription !== "annulee"
       ) {
         aRecevoir += montant;
       }
@@ -278,12 +279,26 @@ function GestionFinance() {
 
     return transactions.filter(
       (transaction) => {
-        if (
-          filtreStatut !== "tous" &&
-          transaction.statut !== filtreStatut
-        ) {
-          return false;
-        }
+        if (filtreStatut !== "tous") {
+  const statutFinance =
+    obtenirStatutFinance(transaction).libelle;
+
+  const correspond =
+    (filtreStatut === "a_recevoir" &&
+      statutFinance === "À recevoir") ||
+    (filtreStatut === "recu" &&
+      statutFinance === "Reçu") ||
+    (filtreStatut === "rembourse" &&
+      statutFinance === "Remboursé") ||
+    (filtreStatut === "a_rembourser" &&
+      statutFinance === "À rembourser") ||
+    (filtreStatut === "annule" &&
+      statutFinance === "Annulé");
+
+  if (!correspond) {
+    return false;
+  }
+}
 
         if (!texte) {
           return true;
@@ -319,6 +334,44 @@ function GestionFinance() {
     filtreStatut,
     recherche,
   ]);
+
+function obtenirStatutFinance(transaction) {
+  if (transaction.statutInscription !== "annulee") {
+    return {
+      libelle:
+        LIBELLES_PAIEMENT[transaction.statut] ??
+        transaction.statut,
+      classe: `paiement-${transaction.statut}`,
+    };
+  }
+
+  const montant = Number(transaction.montant ?? 0);
+  const montantRembourse = Number(
+    transaction.montant_rembourse ?? 0
+  );
+
+  if (transaction.statut === "a_recevoir") {
+    return {
+      libelle: "Annulé",
+      classe: "paiement-annule",
+    };
+  }
+
+  if (
+    transaction.statut === "recu" &&
+    montantRembourse < montant
+  ) {
+    return {
+      libelle: "À rembourser",
+      classe: "paiement-a-rembourser",
+    };
+  }
+
+  return {
+    libelle: "Remboursé",
+    classe: "paiement-rembourse",
+  };
+}
 
   function formaterMontant(montant) {
     return new Intl.NumberFormat(
@@ -460,6 +513,12 @@ function GestionFinance() {
               <option value="rembourse">
                 Remboursés
               </option>
+              <option value="a_rembourser">
+  À rembourser
+</option>
+<option value="annule">
+  Annulés
+</option>
             </select>
           </div>
 
@@ -535,14 +594,12 @@ function GestionFinance() {
 
                         <td>
                           <span
-                            className={`gestion-finance-statut paiement-${transaction.statut}`}
-                          >
-                            {LIBELLES_PAIEMENT[
-                              transaction
-                                .statut
-                            ] ??
-                              transaction.statut}
-                          </span>
+  className={`gestion-finance-statut ${
+    obtenirStatutFinance(transaction).classe
+  }`}
+>
+  {obtenirStatutFinance(transaction).libelle}
+</span>
                         </td>
 
                         <td>
